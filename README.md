@@ -132,37 +132,21 @@ ai-control:
 
 ---
 
-### 3. Cursor (CSV Import)
+### 3. Cursor (Admin API)
 
-> **Nota:** Cursor não possui API pública. A integração é feita via import manual de CSV.
+#### Obtenção de Credenciais
 
-#### Como exportar dados do Cursor
-
-1. Acesse o dashboard administrativo do Cursor
-2. Exporte a lista de usuários em formato CSV
-3. Salve o arquivo no diretório configurado
-
-#### Formato CSV Esperado
-
-```csv
-email,name,status,last_active,joined_at
-john.doe@example.com,John Doe,active,2026-01-21,2025-06-01
-jane.smith@example.com,Jane Smith,active,2026-01-20,2025-05-15
-```
-
-**Campos:**
-- `email` *(obrigatório)*: Email do usuário
-- `name` *(obrigatório)*: Nome completo
-- `status` *(opcional)*: `active` ou `inactive` (default: `active`)
-- `last_active` *(opcional)*: Data da última atividade (formato: YYYY-MM-DD)
-- `joined_at` *(opcional)*: Data de entrada (formato: YYYY-MM-DD)
+1. Acesse **Cursor Settings → Teams → Admin API**
+2. Clique em **"Create API Key"**
+3. Copie a chave que começa com `cur_...`
+4. **Importante:** Apenas administradores do team podem criar API keys
 
 #### Configuração
 
 **Via variáveis de ambiente:**
 ```bash
 export AI_CONTROL_CURSOR_ENABLED=true
-export AI_CONTROL_CURSOR_CSV_PATH="$HOME/.ai-control/imports/cursor"
+export AI_CONTROL_CURSOR_TOKEN="cur_xxx"
 ```
 
 **Via application.yml:**
@@ -171,14 +155,16 @@ ai-control:
   api:
     cursor:
       enabled: true
-      csv-path: ${AI_CONTROL_CURSOR_CSV_PATH}
+      token: ${AI_CONTROL_CURSOR_TOKEN}
 ```
 
-#### Criar diretório de import
+#### Features
 
-```bash
-mkdir -p ~/.ai-control/imports/cursor
-```
+- Busca automática de membros do team via Admin API
+- Retry automático em caso de rate limit (429)
+- Timeout configurável (padrão: 30s)
+- Logs estruturados de todas as operações
+- API Documentation: https://cursor.com/docs/account/teams/admin-api
 
 ## Uso Programático
 
@@ -203,23 +189,23 @@ public void fetchClaudeUsers() {
 }
 ```
 
-### Exemplo: Import CSV do Cursor
+### Exemplo: Buscar usuários do Cursor
 
 ```java
 @Autowired
-private CursorCsvClient cursorClient;
+private CursorApiClient cursorClient;
 
-public void importCursorUsers() {
+public void fetchCursorUsers() {
     try {
-        // Buscar arquivo CSV mais recente
-        String csvFile = cursorClient.findLatestCsvFile();
-
-        // Importar usuários
-        List<UserData> users = cursorClient.importFromCsv(csvFile);
-
-        System.out.println("Importados " + users.size() + " usuários do Cursor");
+        List<UserData> users = cursorClient.fetchUsers();
+        users.forEach(user -> {
+            log.info("Email: {}", user.getEmail());
+            log.info("Name: {}", user.getName());
+            log.info("Role: {}", user.getAdditionalMetrics().get("role"));
+            log.info("---");
+        });
     } catch (ApiClientException e) {
-        log.error("Erro ao importar CSV: {}", e.getMessage());
+        log.error("Erro ao buscar usuários: {}", e.getMessage());
     }
 }
 ```

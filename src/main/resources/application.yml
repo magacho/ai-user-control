@@ -30,11 +30,13 @@ ai-control:
       timeout: 30000
       retry-attempts: 3
 
-    # Cursor Configuration (CSV Import)
+    # Cursor Configuration (Admin API)
     cursor:
       enabled: ${AI_CONTROL_CURSOR_ENABLED:false}
-      import-mode: csv
-      csv-path: ${AI_CONTROL_CURSOR_CSV_PATH:${user.home}/.ai-control/imports/cursor}
+      base-url: https://api.cursor.com
+      token: ${AI_CONTROL_CURSOR_TOKEN:}
+      timeout: 30000
+      retry-attempts: 3
 
 # Logging Configuration
 logging:

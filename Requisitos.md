@@ -1125,7 +1125,7 @@ ai-control:
       org: ${AI_CONTROL_GITHUB_ORG:}
       timeout: 30000
     cursor:
-      base-url: https://api.cursor.sh
+      base-url: https://api.cursor.com
       token: ${AI_CONTROL_CURSOR_TOKEN:}
       timeout: 30000
 

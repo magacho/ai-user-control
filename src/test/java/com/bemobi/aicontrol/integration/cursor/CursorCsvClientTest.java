@@ -36,7 +36,6 @@ class CursorCsvClientTest {
     @BeforeEach
     void setUp() {
         when(properties.isEnabled()).thenReturn(true);
-        when(properties.getImportMode()).thenReturn("csv");
 
         client = new CursorCsvClient(properties);
     }

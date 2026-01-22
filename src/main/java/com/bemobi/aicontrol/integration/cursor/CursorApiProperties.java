@@ -4,9 +4,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Configuration properties for Cursor integration.
+ * Configuration properties for Cursor (Admin API) integration.
  *
- * Since Cursor doesn't have a public API, this integration uses CSV import mode.
+ * Requires an Admin API key from Cursor team settings.
  */
 @ConfigurationProperties(prefix = "ai-control.api.cursor")
 @Validated
@@ -14,8 +14,18 @@ public class CursorApiProperties {
 
     private boolean enabled = false;
 
-    private String importMode = "csv";
+    private String baseUrl;
 
+    private String token;
+
+    private int timeout = 30000;
+
+    private int retryAttempts = 3;
+
+    /**
+     * @deprecated CSV import mode is deprecated. Use Admin API instead.
+     */
+    @Deprecated
     private String csvPath;
 
     public boolean isEnabled() {
@@ -26,18 +36,50 @@ public class CursorApiProperties {
         this.enabled = enabled;
     }
 
-    public String getImportMode() {
-        return importMode;
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
-    public void setImportMode(String importMode) {
-        this.importMode = importMode;
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+
+    public int getRetryAttempts() {
+        return retryAttempts;
+    }
+
+    public void setRetryAttempts(int retryAttempts) {
+        this.retryAttempts = retryAttempts;
+    }
+
+    /**
+     * @deprecated Use Admin API instead of CSV import
+     */
+    @Deprecated
     public String getCsvPath() {
         return csvPath;
     }
 
+    /**
+     * @deprecated Use Admin API instead of CSV import
+     */
+    @Deprecated
     public void setCsvPath(String csvPath) {
         this.csvPath = csvPath;
     }
