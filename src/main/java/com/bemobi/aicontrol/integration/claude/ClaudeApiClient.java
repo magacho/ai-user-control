@@ -1,0 +1,143 @@
+package com.bemobi.aicontrol.integration.claude;
+
+import com.bemobi.aicontrol.integration.ToolApiClient;
+import com.bemobi.aicontrol.integration.claude.dto.ClaudeMember;
+import com.bemobi.aicontrol.integration.claude.dto.ClaudeMembersResponse;
+import com.bemobi.aicontrol.integration.common.ApiClientException;
+import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
+import com.bemobi.aicontrol.integration.common.UserData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Client for integrating with Claude Code (Anthropic API).
+ *
+ * This client fetches organization members from the Anthropic API,
+ * handling authentication, rate limiting, and error responses.
+ */
+@Component
+@ConditionalOnProperty(prefix = "ai-control.api.claude", name = "enabled", havingValue = "true")
+public class ClaudeApiClient implements ToolApiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(ClaudeApiClient.class);
+
+    private final WebClient webClient;
+    private final ClaudeApiProperties properties;
+
+    public ClaudeApiClient(WebClient.Builder webClientBuilder,
+                          ClaudeApiProperties properties) {
+        this.properties = properties;
+        this.webClient = webClientBuilder
+            .baseUrl(properties.getBaseUrl())
+            .defaultHeader("X-API-Key", properties.getToken())
+            .defaultHeader("Anthropic-Version", "2023-06-01")
+            .defaultHeader("Content-Type", "application/json")
+            .build();
+    }
+
+    @Override
+    public String getToolName() {
+        return "claude-code";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Claude Code";
+    }
+
+    @Override
+    public List<UserData> fetchUsers() throws ApiClientException {
+        log.info("Fetching users from Claude Code API");
+
+        try {
+            ClaudeMembersResponse response = webClient.get()
+                .uri("/v1/organizations/{orgId}/members", properties.getOrganizationId())
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(ClaudeMembersResponse.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
+                    .doBeforeRetry(signal ->
+                        log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (response == null || response.getData() == null) {
+                throw new ApiClientException("Empty response from Claude API");
+            }
+
+            log.info("Successfully fetched {} users from Claude Code", response.getData().size());
+
+            return response.getData().stream()
+                .map(this::mapToUserData)
+                .collect(Collectors.toList());
+
+        } catch (WebClientException e) {
+            log.error("Error fetching users from Claude Code: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch users from Claude Code", e);
+        }
+    }
+
+    @Override
+    public ConnectionTestResult testConnection() {
+        try {
+            fetchUsers();
+            return ConnectionTestResult.success(getToolName());
+        } catch (Exception e) {
+            return ConnectionTestResult.failure(getToolName(), e.getMessage());
+        }
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return properties.isEnabled();
+    }
+
+    private UserData mapToUserData(ClaudeMember member) {
+        UserData userData = new UserData();
+        userData.setEmail(member.getEmail() != null ? member.getEmail().toLowerCase() : null);
+        userData.setName(member.getName());
+        userData.setStatus(member.getStatus());
+        userData.setLastActivityAt(member.getLastActiveAt());
+
+        // Adicionar métricas adicionais
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("role", member.getRole());
+        metrics.put("joined_at", member.getJoinedAt());
+        metrics.put("member_id", member.getId());
+        userData.setAdditionalMetrics(metrics);
+
+        return userData;
+    }
+
+    private Mono<? extends Throwable> handle4xxError(ClientResponse response) {
+        return response.bodyToMono(String.class)
+            .flatMap(body -> {
+                log.error("4xx error from Claude API: {} - {}", response.statusCode(), body);
+                return Mono.error(new ApiClientException("Client error: " + body));
+            });
+    }
+
+    private Mono<? extends Throwable> handle5xxError(ClientResponse response) {
+        return response.bodyToMono(String.class)
+            .flatMap(body -> {
+                log.error("5xx error from Claude API: {} - {}", response.statusCode(), body);
+                return Mono.error(new ApiClientException("Server error: " + body));
+            });
+    }
+}

@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: ai-user-control
+
+  # Disable Spring Shell banner for cleaner output
+  shell:
+    interactive:
+      enabled: true
+
+# AI Control Configuration
+ai-control:
+  api:
+    # Claude Code (Anthropic API) Configuration
+    claude:
+      enabled: ${AI_CONTROL_CLAUDE_ENABLED:false}
+      base-url: https://api.anthropic.com
+      token: ${AI_CONTROL_CLAUDE_TOKEN:}
+      organization-id: ${AI_CONTROL_CLAUDE_ORG_ID:}
+      timeout: 30000
+      retry-attempts: 3
+
+    # GitHub Copilot Configuration
+    github:
+      enabled: ${AI_CONTROL_GITHUB_ENABLED:false}
+      base-url: https://api.github.com
+      token: ${AI_CONTROL_GITHUB_TOKEN:}
+      organization: ${AI_CONTROL_GITHUB_ORG:}
+      timeout: 30000
+      retry-attempts: 3
+
+    # Cursor Configuration (CSV Import)
+    cursor:
+      enabled: ${AI_CONTROL_CURSOR_ENABLED:false}
+      import-mode: csv
+      csv-path: ${AI_CONTROL_CURSOR_CSV_PATH:${user.home}/.ai-control/imports/cursor}
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.bemobi.aicontrol: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
