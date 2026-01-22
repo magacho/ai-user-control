@@ -2,7 +2,7 @@ package com.bemobi.aicontrol.integration.github.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * DTO representing a Copilot seat from GitHub API.
@@ -10,16 +10,16 @@ import java.time.LocalDateTime;
 public class GitHubCopilotSeat {
 
     @JsonProperty("created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @JsonProperty("updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @JsonProperty("pending_cancellation_date")
-    private LocalDateTime pendingCancellationDate;
+    private String pendingCancellationDate;
 
     @JsonProperty("last_activity_at")
-    private LocalDateTime lastActivityAt;
+    private OffsetDateTime lastActivityAt;
 
     @JsonProperty("last_activity_editor")
     private String lastActivityEditor;
@@ -29,35 +29,35 @@ public class GitHubCopilotSeat {
     @JsonProperty("assigning_team")
     private GitHubTeam assigningTeam;
 
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 
-    public LocalDateTime getPendingCancellationDate() {
+    public String getPendingCancellationDate() {
         return pendingCancellationDate;
     }
 
-    public void setPendingCancellationDate(LocalDateTime pendingCancellationDate) {
+    public void setPendingCancellationDate(String pendingCancellationDate) {
         this.pendingCancellationDate = pendingCancellationDate;
     }
 
-    public LocalDateTime getLastActivityAt() {
+    public OffsetDateTime getLastActivityAt() {
         return lastActivityAt;
     }
 
-    public void setLastActivityAt(LocalDateTime lastActivityAt) {
+    public void setLastActivityAt(OffsetDateTime lastActivityAt) {
         this.lastActivityAt = lastActivityAt;
     }
 

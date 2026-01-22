@@ -138,7 +138,11 @@ public class GitHubCopilotApiClient implements ToolApiClient {
         }
 
         userData.setStatus("active"); // Todos os seats são ativos
-        userData.setLastActivityAt(seat.getLastActivityAt());
+
+        // Converter OffsetDateTime para LocalDateTime
+        if (seat.getLastActivityAt() != null) {
+            userData.setLastActivityAt(seat.getLastActivityAt().toLocalDateTime());
+        }
 
         // Métricas adicionais
         Map<String, Object> metrics = new HashMap<>();

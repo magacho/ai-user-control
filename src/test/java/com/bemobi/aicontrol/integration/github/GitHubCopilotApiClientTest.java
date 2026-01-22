@@ -17,7 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -91,9 +91,9 @@ class GitHubCopilotApiClientTest {
 
         GitHubCopilotSeat seat = new GitHubCopilotSeat();
         seat.setAssignee(user);
-        seat.setCreatedAt(LocalDateTime.now().minusDays(30));
-        seat.setUpdatedAt(LocalDateTime.now());
-        seat.setLastActivityAt(LocalDateTime.now());
+        seat.setCreatedAt(OffsetDateTime.now().minusDays(30));
+        seat.setUpdatedAt(OffsetDateTime.now());
+        seat.setLastActivityAt(OffsetDateTime.now());
         seat.setLastActivityEditor("vscode");
 
         GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse();
@@ -134,7 +134,7 @@ class GitHubCopilotApiClientTest {
 
         GitHubCopilotSeat seat = new GitHubCopilotSeat();
         seat.setAssignee(user);
-        seat.setLastActivityAt(LocalDateTime.now());
+        seat.setLastActivityAt(OffsetDateTime.now());
         seat.setLastActivityEditor("vscode");
 
         GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse();
