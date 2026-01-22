@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: ai-user-control-integration-test
+
+# Integration test configuration
+# Uses environment variables for real API credentials
+ai-control:
+  api:
+    # Claude Code (Anthropic API)
+    claude:
+      enabled: ${AI_CONTROL_CLAUDE_ENABLED:false}
+      base-url: https://api.anthropic.com
+      token: ${AI_CONTROL_CLAUDE_TOKEN:}
+      organization-id: ${AI_CONTROL_CLAUDE_ORG_ID:}
+      timeout: 30000
+      retry-attempts: 3
+
+    # GitHub Copilot
+    github:
+      enabled: ${AI_CONTROL_GITHUB_ENABLED:false}
+      base-url: https://api.github.com
+      token: ${AI_CONTROL_GITHUB_TOKEN:}
+      organization: ${AI_CONTROL_GITHUB_ORG:}
+      timeout: 30000
+      retry-attempts: 3
+
+    # Cursor (CSV Import)
+    cursor:
+      enabled: ${AI_CONTROL_CURSOR_ENABLED:false}
+      import-mode: csv
+      csv-path: ${AI_CONTROL_CURSOR_CSV_PATH:}
+
+# Logging for integration tests
+logging:
+  level:
+    root: INFO
+    com.bemobi.aicontrol: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
