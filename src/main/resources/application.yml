@@ -10,11 +10,13 @@ spring:
 # AI Control Configuration
 ai-control:
   api:
-    # Claude Code (Anthropic API) Configuration
+    # Claude Code (Anthropic Admin API) Configuration
+    # Requires Admin API key: sk-ant-admin-...
     claude:
       enabled: ${AI_CONTROL_CLAUDE_ENABLED:false}
       base-url: https://api.anthropic.com
       token: ${AI_CONTROL_CLAUDE_TOKEN:}
+      # organization-id is DEPRECATED and no longer required
       organization-id: ${AI_CONTROL_CLAUDE_ORG_ID:}
       timeout: 30000
       retry-attempts: 3

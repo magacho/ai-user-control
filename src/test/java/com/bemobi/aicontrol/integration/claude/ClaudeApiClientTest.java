@@ -52,7 +52,7 @@ class ClaudeApiClientTest {
     void setUp() {
         when(properties.getBaseUrl()).thenReturn("https://api.anthropic.com");
         when(properties.getToken()).thenReturn("test-token");
-        when(properties.getOrganizationId()).thenReturn("org_test");
+        // organizationId is no longer required for Admin API
         when(properties.getTimeout()).thenReturn(30000);
         when(properties.getRetryAttempts()).thenReturn(3);
         when(properties.isEnabled()).thenReturn(true);
@@ -96,7 +96,7 @@ class ClaudeApiClientTest {
         response.setHasMore(false);
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(ClaudeMembersResponse.class)).thenReturn(Mono.just(response));
@@ -157,7 +157,7 @@ class ClaudeApiClientTest {
         response.setHasMore(false);
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(ClaudeMembersResponse.class)).thenReturn(Mono.just(response));

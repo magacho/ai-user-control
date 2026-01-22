@@ -7,6 +7,8 @@ import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.github.GitHubCopilotApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -26,6 +28,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
 
+    private static final Logger log = LoggerFactory.getLogger(GitHubCopilotApiClientIntegrationTest.class);
+
     @Autowired(required = false)
     private GitHubCopilotApiClient githubClient;
 
@@ -42,13 +46,13 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testRealApiConnection() {
-        System.out.println("\n=== Testing REAL GitHub Copilot API Connection ===");
+        log.info("=== Testing REAL GitHub Copilot API Connection ===");
 
         ConnectionTestResult result = githubClient.testConnection();
 
-        System.out.println("Tool: " + result.getToolName());
-        System.out.println("Success: " + result.isSuccess());
-        System.out.println("Message: " + result.getMessage());
+        log.info("Tool: {}", result.getToolName());
+        log.info("Success: {}", result.isSuccess());
+        log.info("Message: {}", result.getMessage());
 
         assertTrue(result.isSuccess(),
             "Connection test should succeed with valid credentials");
@@ -57,12 +61,12 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testRealFetchUsers() throws ApiClientException {
-        System.out.println("\n=== Fetching REAL Copilot Seats from GitHub ===");
+        log.info("=== Fetching REAL Copilot Seats from GitHub ===");
 
         List<UserData> users = githubClient.fetchUsers();
 
         assertNotNull(users, "User list should not be null");
-        System.out.println("Total Copilot seats fetched: " + users.size());
+        log.info("Total Copilot seats fetched: {}", users.size());
 
         // If there are users, validate structure
         if (!users.isEmpty()) {
@@ -73,16 +77,16 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
             assertNotNull(firstUser.getStatus(), "Status should not be null");
             assertEquals("active", firstUser.getStatus(), "All seats should be active");
 
-            System.out.println("\nSample seat:");
-            System.out.println("  Email: " + firstUser.getEmail());
-            System.out.println("  Name: " + firstUser.getName());
-            System.out.println("  Status: " + firstUser.getStatus());
-            System.out.println("  Last Activity: " + firstUser.getLastActivityAt());
+            log.debug("Sample seat:");
+            log.debug("  Email: {}", firstUser.getEmail());
+            log.debug("  Name: {}", firstUser.getName());
+            log.debug("  Status: {}", firstUser.getStatus());
+            log.debug("  Last Activity: {}", firstUser.getLastActivityAt());
 
             if (firstUser.getAdditionalMetrics() != null && !firstUser.getAdditionalMetrics().isEmpty()) {
-                System.out.println("  Additional Metrics:");
+                log.debug("  Additional Metrics:");
                 firstUser.getAdditionalMetrics().forEach((key, value) ->
-                    System.out.println("    " + key + ": " + value));
+                    log.debug("    {}: {}", key, value));
 
                 // Validate GitHub-specific metrics
                 assertTrue(firstUser.getAdditionalMetrics().containsKey("github_login"),
@@ -93,23 +97,23 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
 
             // Check for fallback email pattern
             if (firstUser.getEmail().endsWith("@github.local")) {
-                System.out.println("  Note: Using fallback email (public email not available)");
+                log.info("Note: Using fallback email (public email not available)");
             }
         } else {
-            System.out.println("No Copilot seats found (organization may not have Copilot enabled)");
+            log.info("No Copilot seats found (organization may not have Copilot enabled)");
         }
     }
 
     @Test
     void testClientMetadata() {
-        System.out.println("\n=== Testing Client Metadata ===");
+        log.info("=== Testing Client Metadata ===");
 
         assertEquals("github-copilot", githubClient.getToolName());
         assertEquals("GitHub Copilot", githubClient.getDisplayName());
         assertTrue(githubClient.isEnabled());
 
-        System.out.println("Tool Name: " + githubClient.getToolName());
-        System.out.println("Display Name: " + githubClient.getDisplayName());
-        System.out.println("Enabled: " + githubClient.isEnabled());
+        log.debug("Tool Name: {}", githubClient.getToolName());
+        log.debug("Display Name: {}", githubClient.getDisplayName());
+        log.debug("Enabled: {}", githubClient.isEnabled());
     }
 }

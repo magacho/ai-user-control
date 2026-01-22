@@ -4,7 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Configuration properties for Claude Code (Anthropic API) integration.
+ * Configuration properties for Claude Code (Anthropic Admin API) integration.
+ *
+ * Requires an Admin API key with format: sk-ant-admin-...
+ * Regular API keys (sk-ant-api03-...) will not work for organization management.
  */
 @ConfigurationProperties(prefix = "ai-control.api.claude")
 @Validated
@@ -16,6 +19,11 @@ public class ClaudeApiProperties {
 
     private String token;
 
+    /**
+     * @deprecated Organization ID is no longer required for Admin API.
+     * The Admin API key is already scoped to your organization.
+     */
+    @Deprecated
     private String organizationId;
 
     private int timeout = 30000;

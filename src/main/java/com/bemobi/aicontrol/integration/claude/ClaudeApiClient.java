@@ -25,10 +25,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Client for integrating with Claude Code (Anthropic API).
+ * Client for integrating with Claude Code (Anthropic Admin API).
  *
- * This client fetches organization members from the Anthropic API,
- * handling authentication, rate limiting, and error responses.
+ * This client fetches organization users from the Anthropic Admin API.
+ * Requires an Admin API key (sk-ant-admin-...) with appropriate permissions.
+ *
+ * API Documentation: https://docs.anthropic.com/en/api/administration-api
  */
 @Component
 @ConditionalOnProperty(prefix = "ai-control.api.claude", name = "enabled", havingValue = "true")
@@ -67,11 +69,14 @@ public class ClaudeApiClient implements ToolApiClient {
 
     @Override
     public List<UserData> fetchUsers() throws ApiClientException {
-        log.info("Fetching users from Claude Code API");
+        log.info("Fetching users from Claude Code Admin API");
 
         try {
             ClaudeMembersResponse response = webClient.get()
-                .uri("/v1/organizations/{orgId}/members", properties.getOrganizationId())
+                .uri(uriBuilder -> uriBuilder
+                    .path("/v1/organizations/users")
+                    .queryParam("limit", 100)
+                    .build())
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
@@ -83,7 +88,7 @@ public class ClaudeApiClient implements ToolApiClient {
                 .block(Duration.ofMillis(properties.getTimeout()));
 
             if (response == null || response.getData() == null) {
-                throw new ApiClientException("Empty response from Claude API");
+                throw new ApiClientException("Empty response from Claude Admin API");
             }
 
             log.info("Successfully fetched {} users from Claude Code", response.getData().size());

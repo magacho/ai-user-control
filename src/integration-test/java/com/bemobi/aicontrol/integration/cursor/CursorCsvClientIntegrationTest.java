@@ -7,6 +7,8 @@ import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.cursor.CursorCsvClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
@@ -32,6 +34,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
 
+    private static final Logger log = LoggerFactory.getLogger(CursorCsvClientIntegrationTest.class);
+
     @Autowired(required = false)
     private CursorCsvClient cursorClient;
 
@@ -54,13 +58,13 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testRealDirectoryConnection() {
-        System.out.println("\n=== Testing REAL Cursor CSV Directory Access ===");
+        log.info("=== Testing REAL Cursor CSV Directory Access ===");
 
         ConnectionTestResult result = cursorClient.testConnection();
 
-        System.out.println("Tool: " + result.getToolName());
-        System.out.println("Success: " + result.isSuccess());
-        System.out.println("Message: " + result.getMessage());
+        log.info("Tool: {}", result.getToolName());
+        log.info("Success: {}", result.isSuccess());
+        log.info("Message: {}", result.getMessage());
 
         assertTrue(result.isSuccess(),
             "Connection test should succeed with configured directory");
@@ -69,7 +73,7 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testRealFindLatestCsvFile() {
-        System.out.println("\n=== Finding Latest CSV File ===");
+        log.info("=== Finding Latest CSV File ===");
 
         try {
             String latestFile = cursorClient.findLatestCsvFile();
@@ -78,9 +82,9 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
             assertTrue(latestFile.endsWith(".csv"), "File should be a CSV");
             assertTrue(Files.exists(Paths.get(latestFile)), "File should exist");
 
-            System.out.println("Latest CSV file: " + latestFile);
-            System.out.println("File size: " + Files.size(Paths.get(latestFile)) + " bytes");
-            System.out.println("Last modified: " + Files.getLastModifiedTime(Paths.get(latestFile)));
+            log.info("Latest CSV file: {}", latestFile);
+            log.debug("File size: {} bytes", Files.size(Paths.get(latestFile)));
+            log.debug("Last modified: {}", Files.getLastModifiedTime(Paths.get(latestFile)));
 
         } catch (ApiClientException e) {
             fail("Should find at least one CSV file in configured directory", e);
@@ -91,18 +95,18 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testRealImportFromLatestCsv() {
-        System.out.println("\n=== Importing Users from Latest CSV ===");
+        log.info("=== Importing Users from Latest CSV ===");
 
         try {
             // Find latest CSV
             String csvFile = cursorClient.findLatestCsvFile();
-            System.out.println("Using file: " + csvFile);
+            log.info("Using file: {}", csvFile);
 
             // Import users
             List<UserData> users = cursorClient.importFromCsv(csvFile);
 
             assertNotNull(users, "User list should not be null");
-            System.out.println("Total users imported: " + users.size());
+            log.info("Total users imported: {}", users.size());
 
             // If there are users, validate structure
             if (!users.isEmpty()) {
@@ -112,16 +116,16 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
                 assertNotNull(firstUser.getName(), "Name should not be null");
                 assertNotNull(firstUser.getStatus(), "Status should not be null");
 
-                System.out.println("\nSample user:");
-                System.out.println("  Email: " + firstUser.getEmail());
-                System.out.println("  Name: " + firstUser.getName());
-                System.out.println("  Status: " + firstUser.getStatus());
-                System.out.println("  Last Activity: " + firstUser.getLastActivityAt());
+                log.debug("Sample user:");
+                log.debug("  Email: {}", firstUser.getEmail());
+                log.debug("  Name: {}", firstUser.getName());
+                log.debug("  Status: {}", firstUser.getStatus());
+                log.debug("  Last Activity: {}", firstUser.getLastActivityAt());
 
                 if (firstUser.getAdditionalMetrics() != null && !firstUser.getAdditionalMetrics().isEmpty()) {
-                    System.out.println("  Additional Metrics:");
+                    log.debug("  Additional Metrics:");
                     firstUser.getAdditionalMetrics().forEach((key, value) ->
-                        System.out.println("    " + key + ": " + value));
+                        log.debug("    {}: {}", key, value));
                 }
 
                 // Validate email format
@@ -131,7 +135,7 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
                     "Email should be lowercase");
 
             } else {
-                System.out.println("CSV file is empty (no users)");
+                log.info("CSV file is empty (no users)");
             }
 
         } catch (ApiClientException e) {
@@ -141,20 +145,20 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testClientMetadata() {
-        System.out.println("\n=== Testing Client Metadata ===");
+        log.info("=== Testing Client Metadata ===");
 
         assertEquals("cursor", cursorClient.getToolName());
         assertEquals("Cursor", cursorClient.getDisplayName());
         assertTrue(cursorClient.isEnabled());
 
-        System.out.println("Tool Name: " + cursorClient.getToolName());
-        System.out.println("Display Name: " + cursorClient.getDisplayName());
-        System.out.println("Enabled: " + cursorClient.isEnabled());
+        log.debug("Tool Name: {}", cursorClient.getToolName());
+        log.debug("Display Name: {}", cursorClient.getDisplayName());
+        log.debug("Enabled: {}", cursorClient.isEnabled());
     }
 
     @Test
     void testUnsupportedFetchUsers() {
-        System.out.println("\n=== Testing Unsupported fetchUsers() Method ===");
+        log.info("=== Testing Unsupported fetchUsers() Method ===");
 
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class,
@@ -164,6 +168,6 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
         assertTrue(exception.getMessage().contains("CSV import"),
             "Should mention CSV import in error message");
 
-        System.out.println("Expected exception: " + exception.getMessage());
+        log.debug("Expected exception: {}", exception.getMessage());
     }
 }

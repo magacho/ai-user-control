@@ -46,22 +46,29 @@ mvn test
 
 ## Integrações
 
-### 1. Claude Code (Anthropic API)
+### 1. Claude Code (Anthropic Admin API)
 
 #### Obtenção de Credenciais
 
+**Importante:** Você precisa de uma **Admin API Key**, não uma chave API regular!
+
 1. Acesse https://console.anthropic.com/
 2. Navegue para **Settings → API Keys**
-3. Clique em **Create API Key**
-4. Copie o **API Key** e o **Organization ID**
+3. Procure pela seção **Admin API Keys** (não "API Keys")
+4. Clique em **Create Admin Key**
+5. Copie a chave que começa com `sk-ant-admin-...`
+
+**Requisitos:**
+- Apenas membros com role **admin** podem criar Admin API Keys
+- Admin Keys começam com `sk-ant-admin-...`
+- Chaves regulares (`sk-ant-api03-...`) **não funcionam** para gerenciamento de organização
 
 #### Configuração
 
 **Via variáveis de ambiente:**
 ```bash
 export AI_CONTROL_CLAUDE_ENABLED=true
-export AI_CONTROL_CLAUDE_TOKEN="sk-ant-api03-xxx"
-export AI_CONTROL_CLAUDE_ORG_ID="org_xxx"
+export AI_CONTROL_CLAUDE_TOKEN="sk-ant-admin-xxx"
 ```
 
 **Via application.yml:**
@@ -71,15 +78,16 @@ ai-control:
     claude:
       enabled: true
       token: ${AI_CONTROL_CLAUDE_TOKEN}
-      organization-id: ${AI_CONTROL_CLAUDE_ORG_ID}
 ```
 
 #### Features
 
-- Busca automática de membros da organização
+- Busca automática de usuários da organização via Admin API
+- Suporte a paginação (até 100 usuários por requisição)
 - Retry automático em caso de rate limit (429)
 - Timeout configurável (padrão: 30s)
 - Logs estruturados de todas as operações
+- API Documentation: https://docs.anthropic.com/en/api/administration-api
 
 ---
 
@@ -285,7 +293,8 @@ try {
 | Erro | Causa | Solução |
 |------|-------|---------|
 | `Invalid API key` | Token inválido/expirado | Verificar e regenerar token |
-| `Organization not found` | Org ID incorreto | Verificar ID da organização |
+| `Not Found` (Claude) | Usando API key regular ao invés de Admin key | Criar e usar Admin API key (sk-ant-admin-...) |
+| `Unauthorized` (Claude) | Admin key sem permissões | Verificar que você tem role admin na organização |
 | `Rate limit exceeded` | Muitas requisições | Aguardar reset (retry automático) |
 | `CSV file not found` | Arquivo não existe | Verificar caminho do CSV |
 | `Email is required` | CSV sem campo email | Adicionar coluna `email` |

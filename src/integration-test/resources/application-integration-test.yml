@@ -2,15 +2,25 @@ spring:
   application:
     name: ai-user-control-integration-test
 
+  # Disable Spring Shell during integration tests
+  shell:
+    interactive:
+      enabled: false
+
+  main:
+    web-application-type: none
+
 # Integration test configuration
 # Uses environment variables for real API credentials
 ai-control:
   api:
-    # Claude Code (Anthropic API)
+    # Claude Code (Anthropic Admin API)
+    # Requires Admin API key: sk-ant-admin-...
     claude:
       enabled: ${AI_CONTROL_CLAUDE_ENABLED:false}
       base-url: https://api.anthropic.com
       token: ${AI_CONTROL_CLAUDE_TOKEN:}
+      # organization-id is DEPRECATED and no longer required
       organization-id: ${AI_CONTROL_CLAUDE_ORG_ID:}
       timeout: 30000
       retry-attempts: 3

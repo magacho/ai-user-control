@@ -7,6 +7,8 @@ import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
@@ -16,16 +18,20 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Integration test for Claude Code API client with real API calls.
+ * Integration test for Claude Code Admin API client with real API calls.
  *
  * Required environment variables:
  * - AI_CONTROL_CLAUDE_ENABLED=true
- * - AI_CONTROL_CLAUDE_TOKEN=sk-ant-api03-xxx
- * - AI_CONTROL_CLAUDE_ORG_ID=org_xxx
+ * - AI_CONTROL_CLAUDE_TOKEN=sk-ant-admin-xxx (Admin API Key, NOT regular API key)
  *
- * Run with: mvn verify -P integration-tests
+ * Note: Regular API keys (sk-ant-api03-...) will NOT work.
+ * You must use an Admin API key (sk-ant-admin-...).
+ *
+ * Run with: mvn verify -P integration-tests -DskipTests -Dit.test=ClaudeApiClientIntegrationTest
  */
 class ClaudeApiClientIntegrationTest extends BaseIntegrationTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ClaudeApiClientIntegrationTest.class);
 
     @Autowired(required = false)
     private ClaudeApiClient claudeClient;
@@ -35,21 +41,24 @@ class ClaudeApiClientIntegrationTest extends BaseIntegrationTest {
         // Skip test if credentials are not configured
         assumeTrue(isConfigured("AI_CONTROL_CLAUDE_TOKEN"),
             "Skipping test: AI_CONTROL_CLAUDE_TOKEN not configured");
-        assumeTrue(isConfigured("AI_CONTROL_CLAUDE_ORG_ID"),
-            "Skipping test: AI_CONTROL_CLAUDE_ORG_ID not configured");
         assumeTrue(claudeClient != null,
             "Skipping test: ClaudeApiClient bean not available (check AI_CONTROL_CLAUDE_ENABLED)");
+
+        // Verify it's an Admin API key (starts with sk-ant-admin)
+        String token = System.getenv("AI_CONTROL_CLAUDE_TOKEN");
+        assumeTrue(token != null && token.startsWith("sk-ant-admin"),
+            "Skipping test: Must use Admin API key (sk-ant-admin...), not regular API key (sk-ant-api03...)");
     }
 
     @Test
     void testRealApiConnection() {
-        System.out.println("\n=== Testing REAL Claude Code API Connection ===");
+        log.info("=== Testing REAL Claude Code API Connection ===");
 
         ConnectionTestResult result = claudeClient.testConnection();
 
-        System.out.println("Tool: " + result.getToolName());
-        System.out.println("Success: " + result.isSuccess());
-        System.out.println("Message: " + result.getMessage());
+        log.info("Tool: {}", result.getToolName());
+        log.info("Success: {}", result.isSuccess());
+        log.info("Message: {}", result.getMessage());
 
         assertTrue(result.isSuccess(),
             "Connection test should succeed with valid credentials");
@@ -58,47 +67,56 @@ class ClaudeApiClientIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testRealFetchUsers() throws ApiClientException {
-        System.out.println("\n=== Fetching REAL Users from Claude Code ===");
+        log.info("=== Fetching REAL Users from Claude Code ===");
 
         List<UserData> users = claudeClient.fetchUsers();
 
         assertNotNull(users, "User list should not be null");
-        System.out.println("Total users fetched: " + users.size());
+        log.info("Total users fetched: {}", users.size());
+        log.info("==========================================");
 
-        // If there are users, validate structure
+        // If there are users, validate structure and log all users verbosely
         if (!users.isEmpty()) {
+            // Validate first user structure
             UserData firstUser = users.get(0);
-
             assertNotNull(firstUser.getEmail(), "Email should not be null");
             assertNotNull(firstUser.getName(), "Name should not be null");
-            assertNotNull(firstUser.getStatus(), "Status should not be null");
+            // Status may be null for some users in the Admin API
 
-            System.out.println("\nSample user:");
-            System.out.println("  Email: " + firstUser.getEmail());
-            System.out.println("  Name: " + firstUser.getName());
-            System.out.println("  Status: " + firstUser.getStatus());
-            System.out.println("  Last Activity: " + firstUser.getLastActivityAt());
+            // Log ALL users verbosely
+            for (int i = 0; i < users.size(); i++) {
+                UserData user = users.get(i);
+                log.info("User #{}: ", i + 1);
+                log.info("  Email: {}", user.getEmail());
+                log.info("  Name: {}", user.getName());
+                log.info("  Status: {}", user.getStatus() != null ? user.getStatus() : "null");
+                log.info("  Last Activity: {}", user.getLastActivityAt() != null ? user.getLastActivityAt() : "null");
 
-            if (firstUser.getAdditionalMetrics() != null && !firstUser.getAdditionalMetrics().isEmpty()) {
-                System.out.println("  Additional Metrics:");
-                firstUser.getAdditionalMetrics().forEach((key, value) ->
-                    System.out.println("    " + key + ": " + value));
+                if (user.getAdditionalMetrics() != null && !user.getAdditionalMetrics().isEmpty()) {
+                    log.info("  Additional Metrics:");
+                    user.getAdditionalMetrics().forEach((key, value) ->
+                        log.info("    {}: {}", key, value));
+                } else {
+                    log.info("  Additional Metrics: none");
+                }
+                log.info("------------------------------------------");
             }
+            log.info("==========================================");
         } else {
-            System.out.println("No users found in organization (this is valid if org is empty)");
+            log.info("No users found in organization (this is valid if org is empty)");
         }
     }
 
     @Test
     void testClientMetadata() {
-        System.out.println("\n=== Testing Client Metadata ===");
+        log.info("=== Testing Client Metadata ===");
 
         assertEquals("claude-code", claudeClient.getToolName());
         assertEquals("Claude Code", claudeClient.getDisplayName());
         assertTrue(claudeClient.isEnabled());
 
-        System.out.println("Tool Name: " + claudeClient.getToolName());
-        System.out.println("Display Name: " + claudeClient.getDisplayName());
-        System.out.println("Enabled: " + claudeClient.isEnabled());
+        log.debug("Tool Name: {}", claudeClient.getToolName());
+        log.debug("Display Name: {}", claudeClient.getDisplayName());
+        log.debug("Enabled: {}", claudeClient.isEnabled());
     }
 }
