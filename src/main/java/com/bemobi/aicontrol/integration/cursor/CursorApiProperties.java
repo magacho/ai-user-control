@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class CursorApiProperties {
 
-    private boolean enabled = true;
+    private boolean enabled = false;
 
     private String importMode = "csv";
 

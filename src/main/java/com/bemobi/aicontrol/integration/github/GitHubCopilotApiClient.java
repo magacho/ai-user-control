@@ -44,9 +44,14 @@ public class GitHubCopilotApiClient implements ToolApiClient {
     public GitHubCopilotApiClient(WebClient.Builder webClientBuilder,
                                  GitHubApiProperties properties) {
         this.properties = properties;
+
+        // Only create WebClient if properties are configured
+        String baseUrl = properties.getBaseUrl() != null ? properties.getBaseUrl() : "https://api.github.com";
+        String token = properties.getToken() != null ? properties.getToken() : "";
+
         this.webClient = webClientBuilder
-            .baseUrl(properties.getBaseUrl())
-            .defaultHeader("Authorization", "Bearer " + properties.getToken())
+            .baseUrl(baseUrl)
+            .defaultHeader("Authorization", "Bearer " + token)
             .defaultHeader("Accept", "application/vnd.github+json")
             .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
             .build();

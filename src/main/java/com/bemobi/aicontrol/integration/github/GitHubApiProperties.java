@@ -1,6 +1,5 @@
 package com.bemobi.aicontrol.integration.github;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -11,15 +10,12 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class GitHubApiProperties {
 
-    private boolean enabled = true;
+    private boolean enabled = false;
 
-    @NotBlank(message = "GitHub API base URL is required")
     private String baseUrl;
 
-    @NotBlank(message = "GitHub API token is required")
     private String token;
 
-    @NotBlank(message = "GitHub organization is required")
     private String organization;
 
     private int timeout = 30000;

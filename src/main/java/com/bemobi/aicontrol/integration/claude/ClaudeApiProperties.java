@@ -1,6 +1,5 @@
 package com.bemobi.aicontrol.integration.claude;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -11,15 +10,12 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class ClaudeApiProperties {
 
-    private boolean enabled = true;
+    private boolean enabled = false;
 
-    @NotBlank(message = "Claude API base URL is required")
     private String baseUrl;
 
-    @NotBlank(message = "Claude API token is required")
     private String token;
 
-    @NotBlank(message = "Claude organization ID is required")
     private String organizationId;
 
     private int timeout = 30000;

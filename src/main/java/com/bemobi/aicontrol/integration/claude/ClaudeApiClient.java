@@ -42,9 +42,14 @@ public class ClaudeApiClient implements ToolApiClient {
     public ClaudeApiClient(WebClient.Builder webClientBuilder,
                           ClaudeApiProperties properties) {
         this.properties = properties;
+
+        // Only create WebClient if properties are configured
+        String baseUrl = properties.getBaseUrl() != null ? properties.getBaseUrl() : "https://api.anthropic.com";
+        String token = properties.getToken() != null ? properties.getToken() : "";
+
         this.webClient = webClientBuilder
-            .baseUrl(properties.getBaseUrl())
-            .defaultHeader("X-API-Key", properties.getToken())
+            .baseUrl(baseUrl)
+            .defaultHeader("X-API-Key", token)
             .defaultHeader("Anthropic-Version", "2023-06-01")
             .defaultHeader("Content-Type", "application/json")
             .build();
