@@ -1,0 +1,4 @@
+email,name,status,last_active,joined_at
+john.doe@example.com,John Doe,active,2026-01-21,2025-06-01
+jane.smith@example.com,Jane Smith,active,2026-01-20,2025-05-15
+bob.jones@example.com,Bob Jones,inactive,2025-12-15,2025-04-10
