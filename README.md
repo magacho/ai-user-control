@@ -292,10 +292,12 @@ try {
 
 ## Testes
 
+### Testes Unitários
+
 O projeto possui **45 testes unitários** com cobertura >80%:
 
 ```bash
-# Executar todos os testes
+# Executar todos os testes unitários
 mvn test
 
 # Executar testes de uma classe específica
@@ -305,6 +307,31 @@ mvn test -Dtest=ClaudeApiClientTest
 mvn jacoco:report
 # Relatório em: target/site/jacoco/index.html
 ```
+
+### Testes de Integração (APIs Reais)
+
+O projeto também inclui **testes de integração** que fazem chamadas reais às APIs:
+
+```bash
+# Configurar credenciais (copie e edite .env.example)
+cp .env.example .env
+source .env
+
+# Executar testes de integração
+mvn verify -P integration-tests
+
+# Ou usar o script auxiliar
+./run-integration-tests.sh
+```
+
+**Características:**
+- ✅ Fazem chamadas reais às APIs (sem mocks)
+- ✅ Validam que a integração funciona de verdade
+- ✅ Ignoram testes automaticamente se credenciais não configuradas
+- ✅ Exibem output detalhado dos dados reais retornados
+- ✅ Baixo risco (apenas operações de leitura)
+
+Para mais informações, veja [INTEGRATION_TESTS.md](INTEGRATION_TESTS.md)
 
 ## Logs
 
