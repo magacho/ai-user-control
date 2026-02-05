@@ -32,7 +32,7 @@ import java.util.stream.Stream;
  * from CSV files exported from the Cursor admin dashboard.
  */
 @Component
-@ConditionalOnProperty(prefix = "ai-control.api.cursor", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "ai-control.api.cursor.csv-import", name = "enabled", havingValue = "true")
 public class CursorCsvClient implements ToolApiClient {
 
     private static final Logger log = LoggerFactory.getLogger(CursorCsvClient.class);

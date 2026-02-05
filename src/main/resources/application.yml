@@ -52,6 +52,10 @@ ai-control:
       token: ${AI_CONTROL_CURSOR_TOKEN:}
       timeout: 30000
       retry-attempts: 3
+      # CSV import (legacy method, disabled by default)
+      csv-import:
+        enabled: ${AI_CONTROL_CURSOR_CSV_ENABLED:false}
+        csv-path: ${AI_CONTROL_CURSOR_CSV_PATH:./cursor-exports}
 
 # Logging Configuration
 logging:
