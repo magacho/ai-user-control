@@ -91,6 +91,7 @@ public class GitHubCopilotApiClient implements ToolApiClient {
             }
 
             log.info("Successfully fetched {} Copilot seats from GitHub", response.getTotalSeats());
+            log.info("Fetching public emails for {} users (this may take a moment)", response.getTotalSeats());
 
             return response.getSeats().stream()
                 .map(this::mapToUserData)
@@ -125,16 +126,39 @@ public class GitHubCopilotApiClient implements ToolApiClient {
 
         GitHubUser assignee = seat.getAssignee();
         if (assignee != null) {
-            // Email pode não estar disponível via API pública
-            String email = assignee.getEmail();
+            // Tentar obter email real do perfil público do usuário
+            String email = null;
+            String emailType = "generated";
+
+            try {
+                GitHubUser publicProfile = fetchUserPublicProfile(assignee.getLogin());
+                if (publicProfile != null && publicProfile.getEmail() != null && !publicProfile.getEmail().isEmpty()) {
+                    email = publicProfile.getEmail();
+                    emailType = "real";
+                    log.debug("Found public email for user {}: {}", assignee.getLogin(), email);
+                }
+            } catch (Exception e) {
+                log.debug("Could not fetch public profile for user {}: {}", assignee.getLogin(), e.getMessage());
+            }
+
+            // Fallback para email gerado se não encontrou email público
             if (email == null || email.isEmpty()) {
-                // Usar login como fallback
                 email = assignee.getLogin() + "@github.local";
-                log.debug("Email not available for user {}, using generated email", assignee.getLogin());
+                log.info("Email not available for user {}, using generated email", assignee.getLogin());
             }
 
             userData.setEmail(email.toLowerCase());
             userData.setName(assignee.getName() != null ? assignee.getName() : assignee.getLogin());
+
+            // Métricas adicionais
+            Map<String, Object> metrics = new HashMap<>();
+            metrics.put("last_activity_editor", seat.getLastActivityEditor());
+            metrics.put("created_at", seat.getCreatedAt());
+            metrics.put("updated_at", seat.getUpdatedAt());
+            metrics.put("github_login", assignee.getLogin());
+            metrics.put("github_id", assignee.getId());
+            metrics.put("email_type", emailType);
+            userData.setAdditionalMetrics(metrics);
         }
 
         userData.setStatus("active"); // Todos os seats são ativos
@@ -144,18 +168,31 @@ public class GitHubCopilotApiClient implements ToolApiClient {
             userData.setLastActivityAt(seat.getLastActivityAt().toLocalDateTime());
         }
 
-        // Métricas adicionais
-        Map<String, Object> metrics = new HashMap<>();
-        metrics.put("last_activity_editor", seat.getLastActivityEditor());
-        metrics.put("created_at", seat.getCreatedAt());
-        metrics.put("updated_at", seat.getUpdatedAt());
-        if (assignee != null) {
-            metrics.put("github_login", assignee.getLogin());
-            metrics.put("github_id", assignee.getId());
-        }
-        userData.setAdditionalMetrics(metrics);
-
         return userData;
+    }
+
+    /**
+     * Fetch user's public profile to get their public email address.
+     * Returns null if profile cannot be fetched or user doesn't have public email.
+     */
+    private GitHubUser fetchUserPublicProfile(String username) {
+        try {
+            return webClient.get()
+                .uri("/users/{username}", username)
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, response -> Mono.empty())
+                .onStatus(HttpStatusCode::is5xxServerError, response -> Mono.empty())
+                .bodyToMono(GitHubUser.class)
+                .timeout(Duration.ofSeconds(5))
+                .onErrorResume(throwable -> {
+                    log.debug("Error fetching public profile for {}: {}", username, throwable.getMessage());
+                    return Mono.empty();
+                })
+                .block();
+        } catch (Exception e) {
+            log.debug("Failed to fetch public profile for {}: {}", username, e.getMessage());
+            return null;
+        }
     }
 
     private Mono<? extends Throwable> handle4xxError(ClientResponse response) {

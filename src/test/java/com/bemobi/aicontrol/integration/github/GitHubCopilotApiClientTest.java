@@ -100,11 +100,19 @@ class GitHubCopilotApiClientTest {
         response.setTotalSeats(1);
         response.setSeats(Arrays.asList(seat));
 
+        // Mock Copilot seats call
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        // Mock public profile call - user has public email
+        GitHubUser publicProfile = new GitHubUser();
+        publicProfile.setEmail("test@example.com");
+        publicProfile.setName("Test User");
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
 
         // Execute
         List<UserData> users = client.fetchUsers();
@@ -121,6 +129,7 @@ class GitHubCopilotApiClientTest {
         assertEquals("vscode", userData.getAdditionalMetrics().get("last_activity_editor"));
         assertEquals("testuser", userData.getAdditionalMetrics().get("github_login"));
         assertEquals(123L, userData.getAdditionalMetrics().get("github_id"));
+        assertEquals("real", userData.getAdditionalMetrics().get("email_type"));
     }
 
     @Test
@@ -142,10 +151,16 @@ class GitHubCopilotApiClientTest {
         response.setSeats(Arrays.asList(seat));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        // Mock public profile call - user has no public email
+        GitHubUser publicProfile = new GitHubUser();
+        publicProfile.setEmail(null);
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
 
         // Execute
         List<UserData> users = client.fetchUsers();
@@ -157,6 +172,7 @@ class GitHubCopilotApiClientTest {
         UserData userData = users.get(0);
         assertEquals("testuser@github.local", userData.getEmail()); // Fallback email
         assertEquals("Test User", userData.getName());
+        assertEquals("generated", userData.getAdditionalMetrics().get("email_type"));
     }
 
     @Test

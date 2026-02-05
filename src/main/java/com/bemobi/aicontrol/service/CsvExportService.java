@@ -33,7 +33,7 @@ public class CsvExportService {
     private static final DateTimeFormatter CSV_DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     private static final String[] CSV_HEADERS = {
-            "tool", "email", "name", "status", "last_activity_at", "collected_at"
+            "tool", "email", "name", "status", "last_activity_at", "collected_at", "email_type"
     };
 
     private final String outputDirectory;
@@ -156,13 +156,20 @@ public class CsvExportService {
      */
     private void writeUserRecord(CSVPrinter csvPrinter, String toolName, UserData user, LocalDateTime collectedAt)
             throws IOException {
+        // Get email_type from additional metrics (for GitHub Copilot)
+        String emailType = "";
+        if (user.getAdditionalMetrics() != null && user.getAdditionalMetrics().containsKey("email_type")) {
+            emailType = user.getAdditionalMetrics().get("email_type").toString();
+        }
+
         csvPrinter.printRecord(
                 toolName,
                 user.getEmail() != null ? user.getEmail() : "",
                 user.getName() != null ? user.getName() : "",
                 user.getStatus() != null ? user.getStatus() : "",
                 user.getLastActivityAt() != null ? user.getLastActivityAt().format(CSV_DATETIME_FORMATTER) : "",
-                collectedAt.format(CSV_DATETIME_FORMATTER)
+                collectedAt.format(CSV_DATETIME_FORMATTER),
+                emailType
         );
     }
 
