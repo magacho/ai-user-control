@@ -9,6 +9,15 @@ spring:
 
 # AI Control Configuration
 ai-control:
+  # Export Configuration
+  export:
+    # Run data collection and export on application startup
+    on-startup: ${AI_CONTROL_EXPORT_ON_STARTUP:true}
+    # Output directory for generated CSV files
+    output-directory: ${AI_CONTROL_EXPORT_OUTPUT_DIR:./output}
+    # Generate consolidated CSV with all users
+    consolidated: ${AI_CONTROL_EXPORT_CONSOLIDATED:false}
+
   api:
     # Claude Code (Anthropic Admin API) Configuration
     # Requires Admin API key: sk-ant-admin-...

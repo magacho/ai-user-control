@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.1</version>
+        <version>3.5.10</version>
         <relativePath/>
     </parent>
 
@@ -22,6 +22,12 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Security: Override JLine version to fix CVE-2023-50572 (DoS via OOM in GroovyEngine.execute) -->
+        <jline.version>3.25.1</jline.version>
+
+        <!-- Security: Override Netty version to fix CVE-2025-25193, CVE-2025-24970, CVE-2025-55163, CVE-2025-58057 -->
+        <netty.version>4.1.125.Final</netty.version>
     </properties>
 
     <dependencies>
