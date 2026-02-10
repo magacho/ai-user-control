@@ -112,26 +112,26 @@ class CursorCsvClientIntegrationTest extends BaseIntegrationTest {
             if (!users.isEmpty()) {
                 UserData firstUser = users.get(0);
 
-                assertNotNull(firstUser.getEmail(), "Email should not be null");
-                assertNotNull(firstUser.getName(), "Name should not be null");
-                assertNotNull(firstUser.getStatus(), "Status should not be null");
+                assertNotNull(firstUser.email(), "Email should not be null");
+                assertNotNull(firstUser.name(), "Name should not be null");
+                assertNotNull(firstUser.status(), "Status should not be null");
 
                 log.debug("Sample user:");
-                log.debug("  Email: {}", firstUser.getEmail());
-                log.debug("  Name: {}", firstUser.getName());
-                log.debug("  Status: {}", firstUser.getStatus());
-                log.debug("  Last Activity: {}", firstUser.getLastActivityAt());
+                log.debug("  Email: {}", firstUser.email());
+                log.debug("  Name: {}", firstUser.name());
+                log.debug("  Status: {}", firstUser.status());
+                log.debug("  Last Activity: {}", firstUser.lastActivityAt());
 
-                if (firstUser.getAdditionalMetrics() != null && !firstUser.getAdditionalMetrics().isEmpty()) {
+                if (firstUser.additionalMetrics() != null && !firstUser.additionalMetrics().isEmpty()) {
                     log.debug("  Additional Metrics:");
-                    firstUser.getAdditionalMetrics().forEach((key, value) ->
+                    firstUser.additionalMetrics().forEach((key, value) ->
                         log.debug("    {}: {}", key, value));
                 }
 
                 // Validate email format
-                assertTrue(firstUser.getEmail().contains("@"),
+                assertTrue(firstUser.email().contains("@"),
                     "Email should contain @");
-                assertTrue(firstUser.getEmail().equals(firstUser.getEmail().toLowerCase()),
+                assertTrue(firstUser.email().equals(firstUser.email().toLowerCase()),
                     "Email should be lowercase");
 
             } else {

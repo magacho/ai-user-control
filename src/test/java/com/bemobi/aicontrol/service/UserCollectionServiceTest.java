@@ -139,7 +139,7 @@ class UserCollectionServiceTest {
 
         // Assert
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).getEmail()).isEqualTo("claude@example.com");
+        assertThat(results.get(0).email()).isEqualTo("claude@example.com");
         verify(claudeClient).fetchUsers();
     }
 
@@ -245,11 +245,6 @@ class UserCollectionServiceTest {
     }
 
     private UserData createUserData(String email, String name, String tool) {
-        UserData userData = new UserData();
-        userData.setEmail(email);
-        userData.setName(name);
-        userData.setStatus("active");
-        userData.setLastActivityAt(LocalDateTime.now());
-        return userData;
+        return new UserData(email, name, "active", LocalDateTime.now(), null, null);
     }
 }

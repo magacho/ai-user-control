@@ -69,21 +69,21 @@ class CursorApiClientIntegrationTest extends BaseIntegrationTest {
         if (!users.isEmpty()) {
             // Validate first user structure
             UserData firstUser = users.get(0);
-            assertNotNull(firstUser.getEmail(), "Email should not be null");
-            assertNotNull(firstUser.getName(), "Name should not be null");
+            assertNotNull(firstUser.email(), "Email should not be null");
+            assertNotNull(firstUser.name(), "Name should not be null");
 
             // Log ALL users verbosely
             for (int i = 0; i < users.size(); i++) {
                 UserData user = users.get(i);
                 log.info("User #{}: ", i + 1);
-                log.info("  Email: {}", user.getEmail());
-                log.info("  Name: {}", user.getName());
-                log.info("  Status: {}", user.getStatus() != null ? user.getStatus() : "active");
-                log.info("  Last Activity: {}", user.getLastActivityAt() != null ? user.getLastActivityAt() : "null");
+                log.info("  Email: {}", user.email());
+                log.info("  Name: {}", user.name());
+                log.info("  Status: {}", user.status() != null ? user.status() : "active");
+                log.info("  Last Activity: {}", user.lastActivityAt() != null ? user.lastActivityAt() : "null");
 
-                if (user.getAdditionalMetrics() != null && !user.getAdditionalMetrics().isEmpty()) {
+                if (user.additionalMetrics() != null && !user.additionalMetrics().isEmpty()) {
                     log.info("  Additional Metrics:");
-                    user.getAdditionalMetrics().forEach((key, value) ->
+                    user.additionalMetrics().forEach((key, value) ->
                         log.info("    {}: {}", key, value));
                 } else {
                     log.info("  Additional Metrics: none");

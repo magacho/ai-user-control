@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -155,31 +156,28 @@ public class CursorCsvClient implements ToolApiClient {
     }
 
     private UserData parseCsvRecord(CSVRecord record) {
-        UserData userData = new UserData();
-
         // Email (obrigatório)
         String email = record.get("email");
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required on line " + record.getRecordNumber());
         }
-        userData.setEmail(email.toLowerCase().trim());
 
         // Name (obrigatório)
         String name = record.get("name");
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Name is required on line " + record.getRecordNumber());
         }
-        userData.setName(name.trim());
 
         // Status (opcional, default: active)
         String status = record.isMapped("status") ? record.get("status") : "active";
-        userData.setStatus(status != null && !status.isEmpty() ? status : "active");
+        String resolvedStatus = status != null && !status.isEmpty() ? status : "active";
 
         // Last Active (opcional)
+        LocalDateTime lastActivityAt = null;
         if (record.isMapped("last_active")) {
             String lastActive = record.get("last_active");
             if (lastActive != null && !lastActive.isEmpty()) {
-                userData.setLastActivityAt(LocalDate.parse(lastActive).atStartOfDay());
+                lastActivityAt = LocalDate.parse(lastActive).atStartOfDay();
             }
         }
 
@@ -191,8 +189,14 @@ public class CursorCsvClient implements ToolApiClient {
                 metrics.put("joined_at", LocalDate.parse(joinedAt).atStartOfDay());
             }
         }
-        userData.setAdditionalMetrics(metrics);
 
-        return userData;
+        return new UserData(
+                email.toLowerCase().trim(),
+                name.trim(),
+                resolvedStatus,
+                lastActivityAt,
+                metrics,
+                null
+        );
     }
 }

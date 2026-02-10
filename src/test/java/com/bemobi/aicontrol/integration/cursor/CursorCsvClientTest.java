@@ -82,16 +82,16 @@ class CursorCsvClientTest {
         assertEquals(2, users.size());
 
         UserData user1 = users.get(0);
-        assertEquals("test@example.com", user1.getEmail());
-        assertEquals("Test User", user1.getName());
-        assertEquals("active", user1.getStatus());
-        assertNotNull(user1.getLastActivityAt());
-        assertEquals(LocalDate.of(2026, 1, 20).atStartOfDay(), user1.getLastActivityAt());
+        assertEquals("test@example.com", user1.email());
+        assertEquals("Test User", user1.name());
+        assertEquals("active", user1.status());
+        assertNotNull(user1.lastActivityAt());
+        assertEquals(LocalDate.of(2026, 1, 20).atStartOfDay(), user1.lastActivityAt());
 
         UserData user2 = users.get(1);
-        assertEquals("user2@example.com", user2.getEmail());
-        assertEquals("User Two", user2.getName());
-        assertEquals("inactive", user2.getStatus());
+        assertEquals("user2@example.com", user2.email());
+        assertEquals("User Two", user2.name());
+        assertEquals("inactive", user2.status());
     }
 
     @Test
@@ -111,10 +111,10 @@ class CursorCsvClientTest {
         assertEquals(1, users.size());
 
         UserData user = users.get(0);
-        assertEquals("test@example.com", user.getEmail());
-        assertEquals("Test User", user.getName());
-        assertEquals("active", user.getStatus()); // Default value
-        assertNull(user.getLastActivityAt());
+        assertEquals("test@example.com", user.email());
+        assertEquals("Test User", user.name());
+        assertEquals("active", user.status()); // Default value
+        assertNull(user.lastActivityAt());
     }
 
     @Test

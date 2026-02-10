@@ -98,11 +98,11 @@ class CursorApiClientTest {
         assertEquals(1, users.size());
 
         UserData userData = users.get(0);
-        assertEquals("test@example.com", userData.getEmail());
-        assertEquals("Test User", userData.getName());
-        assertEquals("active", userData.getStatus());
-        assertEquals("admin", userData.getAdditionalMetrics().get("role"));
-        assertEquals("user_123", userData.getAdditionalMetrics().get("user_id"));
+        assertEquals("test@example.com", userData.email());
+        assertEquals("Test User", userData.name());
+        assertEquals("active", userData.status());
+        assertEquals("admin", userData.additionalMetrics().get("role"));
+        assertEquals("user_123", userData.additionalMetrics().get("user_id"));
     }
 
     @Test
@@ -169,7 +169,7 @@ class CursorApiClientTest {
 
         List<UserData> users = client.fetchUsers();
 
-        assertEquals("test.user@example.com", users.get(0).getEmail());
+        assertEquals("test.user@example.com", users.get(0).email());
     }
 
     @Test
@@ -189,10 +189,10 @@ class CursorApiClientTest {
         List<UserData> users = client.fetchUsers();
 
         assertEquals(2, users.size());
-        assertEquals("user1@example.com", users.get(0).getEmail());
-        assertEquals("user2@example.com", users.get(1).getEmail());
-        assertEquals("admin", users.get(0).getAdditionalMetrics().get("role"));
-        assertEquals("member", users.get(1).getAdditionalMetrics().get("role"));
+        assertEquals("user1@example.com", users.get(0).email());
+        assertEquals("user2@example.com", users.get(1).email());
+        assertEquals("admin", users.get(0).additionalMetrics().get("role"));
+        assertEquals("member", users.get(1).additionalMetrics().get("role"));
     }
 
     @Test

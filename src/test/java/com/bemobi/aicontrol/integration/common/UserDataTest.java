@@ -12,63 +12,52 @@ class UserDataTest {
 
     @Test
     void testUserDataCreation() {
-        UserData userData = new UserData();
+        UserData userData = new UserData(null, null, null, null, null, null);
 
         assertNotNull(userData);
-        assertNotNull(userData.getAdditionalMetrics());
-        assertTrue(userData.getAdditionalMetrics().isEmpty());
+        assertNotNull(userData.additionalMetrics());
+        assertTrue(userData.additionalMetrics().isEmpty());
     }
 
     @Test
-    void testSettersAndGetters() {
-        UserData userData = new UserData();
-
+    void testRecordAccessors() {
         String email = "test@example.com";
         String name = "Test User";
         String status = "active";
         LocalDateTime lastActivity = LocalDateTime.now();
 
-        userData.setEmail(email);
-        userData.setName(name);
-        userData.setStatus(status);
-        userData.setLastActivityAt(lastActivity);
+        UserData userData = new UserData(email, name, status, lastActivity, null, null);
 
-        assertEquals(email, userData.getEmail());
-        assertEquals(name, userData.getName());
-        assertEquals(status, userData.getStatus());
-        assertEquals(lastActivity, userData.getLastActivityAt());
+        assertEquals(email, userData.email());
+        assertEquals(name, userData.name());
+        assertEquals(status, userData.status());
+        assertEquals(lastActivity, userData.lastActivityAt());
     }
 
     @Test
     void testAdditionalMetrics() {
-        UserData userData = new UserData();
-
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("role", "admin");
         metrics.put("joined_at", LocalDateTime.now());
 
-        userData.setAdditionalMetrics(metrics);
+        UserData userData = new UserData(null, null, null, null, metrics, null);
 
-        assertEquals(2, userData.getAdditionalMetrics().size());
-        assertEquals("admin", userData.getAdditionalMetrics().get("role"));
+        assertEquals(2, userData.additionalMetrics().size());
+        assertEquals("admin", userData.additionalMetrics().get("role"));
     }
 
     @Test
     void testRawJson() {
-        UserData userData = new UserData();
         String rawJson = "{\"test\":\"data\"}";
 
-        userData.setRawJson(rawJson);
+        UserData userData = new UserData(null, null, null, null, null, rawJson);
 
-        assertEquals(rawJson, userData.getRawJson());
+        assertEquals(rawJson, userData.rawJson());
     }
 
     @Test
     void testToString() {
-        UserData userData = new UserData();
-        userData.setEmail("test@example.com");
-        userData.setName("Test User");
-        userData.setStatus("active");
+        UserData userData = new UserData("test@example.com", "Test User", "active", null, null, null);
 
         String result = userData.toString();
 
