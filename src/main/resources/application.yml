@@ -45,6 +45,16 @@ ai-control:
       timeout: 30000
       retry-attempts: 3
 
+    # Google Workspace Configuration (email resolution via custom property)
+    google-workspace:
+      enabled: ${AI_CONTROL_WORKSPACE_ENABLED:false}
+      credentials: ${AI_CONTROL_WORKSPACE_CREDENTIALS:}
+      domain: ${AI_CONTROL_WORKSPACE_DOMAIN:}
+      admin-email: ${AI_CONTROL_WORKSPACE_ADMIN_EMAIL:}
+      custom-schema: ${AI_CONTROL_WORKSPACE_CUSTOM_SCHEMA:custom}
+      git-name-field: ${AI_CONTROL_WORKSPACE_GIT_FIELD:git_name}
+      timeout: 30000
+
     # Cursor Configuration (Admin API)
     cursor:
       enabled: ${AI_CONTROL_CURSOR_ENABLED:false}

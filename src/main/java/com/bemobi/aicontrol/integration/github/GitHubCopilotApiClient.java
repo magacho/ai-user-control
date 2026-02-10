@@ -7,8 +7,10 @@ import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeat;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeatsResponse;
 import com.bemobi.aicontrol.integration.github.dto.GitHubUser;
+import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -24,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -40,10 +43,13 @@ public class GitHubCopilotApiClient implements ToolApiClient {
 
     private final WebClient webClient;
     private final GitHubApiProperties properties;
+    private final GoogleWorkspaceClient workspaceClient;
 
     public GitHubCopilotApiClient(WebClient.Builder webClientBuilder,
-                                 GitHubApiProperties properties) {
+                                 GitHubApiProperties properties,
+                                 @Autowired(required = false) GoogleWorkspaceClient workspaceClient) {
         this.properties = properties;
+        this.workspaceClient = workspaceClient;
 
         // Only create WebClient if properties are configured
         String baseUrl = properties.getBaseUrl() != null ? properties.getBaseUrl() : "https://api.github.com";
@@ -128,22 +134,41 @@ public class GitHubCopilotApiClient implements ToolApiClient {
 
         GitHubUser assignee = seat.assignee();
         if (assignee != null) {
-            String emailType = "generated";
+            String emailType = "not_found";
 
-            try {
-                GitHubUser publicProfile = fetchUserPublicProfile(assignee.login());
-                if (publicProfile != null && publicProfile.email() != null && !publicProfile.email().isEmpty()) {
-                    email = publicProfile.email();
-                    emailType = "real";
-                    log.debug("Found public email for user {}: {}", assignee.login(), email);
+            // Priority 1: Google Workspace lookup (if enabled)
+            if (workspaceClient != null) {
+                try {
+                    Optional<String> workspaceEmail = workspaceClient.findEmailByGitName(assignee.login());
+                    if (workspaceEmail.isPresent()) {
+                        email = workspaceEmail.get();
+                        emailType = "workspace";
+                        log.debug("Workspace resolved email for user {}: {}", assignee.login(), email);
+                    }
+                } catch (Exception e) {
+                    log.debug("Workspace lookup failed for user {}: {}", assignee.login(), e.getMessage());
                 }
-            } catch (Exception e) {
-                log.debug("Could not fetch public profile for user {}: {}", assignee.login(), e.getMessage());
             }
 
+            // Priority 2: GitHub public profile
             if (email == null || email.isEmpty()) {
-                email = assignee.login() + "@github.local";
-                log.info("Email not available for user {}, using generated email", assignee.login());
+                try {
+                    GitHubUser publicProfile = fetchUserPublicProfile(assignee.login());
+                    if (publicProfile != null && publicProfile.email() != null && !publicProfile.email().isEmpty()) {
+                        email = publicProfile.email();
+                        emailType = "real";
+                        log.debug("Found public email for user {}: {}", assignee.login(), email);
+                    }
+                } catch (Exception e) {
+                    log.debug("Could not fetch public profile for user {}: {}", assignee.login(), e.getMessage());
+                }
+            }
+
+            // Priority 3: Fallback - no email found
+            if (email == null || email.isEmpty()) {
+                email = "[SEM-USR-GITHUB]";
+                emailType = "not_found";
+                log.info("Email not available for user {}, marking as unresolved", assignee.login());
             }
 
             email = email.toLowerCase();
