@@ -2,7 +2,9 @@ package com.bemobi.aicontrol.runner;
 
 import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.service.CsvExportService;
+import com.bemobi.aicontrol.service.UnifiedUser;
 import com.bemobi.aicontrol.service.UserCollectionService;
+import com.bemobi.aicontrol.service.UserUnificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +42,7 @@ public class DataCollectionRunner implements CommandLineRunner {
 
     private final UserCollectionService collectionService;
     private final CsvExportService csvExportService;
+    private final UserUnificationService unificationService;
     private final boolean exportConsolidated;
 
     /**
@@ -47,14 +50,17 @@ public class DataCollectionRunner implements CommandLineRunner {
      *
      * @param collectionService Service for collecting user data
      * @param csvExportService Service for exporting to CSV
+     * @param unificationService Service for unifying users across tools
      * @param exportConsolidated Whether to generate consolidated CSV
      */
     public DataCollectionRunner(
             UserCollectionService collectionService,
             CsvExportService csvExportService,
+            UserUnificationService unificationService,
             @Value("${ai-control.export.consolidated:false}") boolean exportConsolidated) {
         this.collectionService = collectionService;
         this.csvExportService = csvExportService;
+        this.unificationService = unificationService;
         this.exportConsolidated = exportConsolidated;
     }
 
@@ -108,6 +114,17 @@ public class DataCollectionRunner implements CommandLineRunner {
                 Path consolidatedFile = csvExportService.exportToConsolidatedCsv(userData);
                 log.info("Consolidated CSV: {}", consolidatedFile.toAbsolutePath());
             }
+
+            // Step 4: Generate unified CSV (always)
+            log.info("");
+            log.info("Generating unified CSV...");
+            List<UnifiedUser> unified = unificationService.unify(userData);
+            Path unifiedCsv = csvExportService.exportToUnifiedCsv(unified);
+            log.info("Unified CSV: {}", unifiedCsv.toAbsolutePath());
+
+            String summary = unificationService.buildSummary(unified, userData);
+            log.info("");
+            log.info(summary);
 
             log.info("");
             log.info("=".repeat(80));

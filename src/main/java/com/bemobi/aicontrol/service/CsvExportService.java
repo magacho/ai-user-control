@@ -36,6 +36,12 @@ public class CsvExportService {
             "tool", "email", "name", "status", "last_activity_at", "collected_at", "email_type"
     };
 
+    private static final String[] UNIFIED_CSV_HEADERS = {
+            "email", "name", "tools_count", "uses_claude", "uses_copilot", "uses_cursor",
+            "claude_last_activity", "copilot_last_activity", "cursor_last_activity",
+            "claude_status", "copilot_status", "cursor_status", "email_type"
+    };
+
     private final String outputDirectory;
 
     /**
@@ -112,6 +118,49 @@ public class CsvExportService {
 
         long fileSize = Files.size(outputPath);
         log.info("Created consolidated CSV: {} ({} users, {} bytes)", filename, totalUsers, fileSize);
+
+        return outputPath;
+    }
+
+    /**
+     * Exports unified user data to a single CSV file with one row per user.
+     *
+     * @param users List of unified users to export
+     * @return Path to the generated CSV file
+     * @throws IOException if there's an error writing the CSV file
+     */
+    public Path exportToUnifiedCsv(List<UnifiedUser> users) throws IOException {
+        log.info("Starting unified CSV export for {} users", users.size());
+        ensureOutputDirectoryExists();
+
+        String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMATTER);
+        String filename = String.format("users-unified-%s.csv", timestamp);
+        Path outputPath = Paths.get(outputDirectory, filename);
+
+        try (BufferedWriter writer = Files.newBufferedWriter(outputPath);
+             CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(UNIFIED_CSV_HEADERS))) {
+
+            for (UnifiedUser user : users) {
+                csvPrinter.printRecord(
+                        user.email(),
+                        user.name(),
+                        user.toolsCount(),
+                        user.usesClaude(),
+                        user.usesCopilot(),
+                        user.usesCursor(),
+                        user.claudeLastActivity(),
+                        user.copilotLastActivity(),
+                        user.cursorLastActivity(),
+                        user.claudeStatus(),
+                        user.copilotStatus(),
+                        user.cursorStatus(),
+                        user.emailType()
+                );
+            }
+        }
+
+        long fileSize = Files.size(outputPath);
+        log.info("Created unified CSV: {} ({} users, {} bytes)", filename, users.size(), fileSize);
 
         return outputPath;
     }
