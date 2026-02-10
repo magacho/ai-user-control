@@ -209,6 +209,45 @@ class GitHubCopilotApiClientTest {
     }
 
     @Test
+    void testFetchUsers_WorkspaceThrowsException_FallbackToGitHub() throws ApiClientException {
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", null, null, null
+        );
+
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                now.minusDays(30), now, null, now, "vscode", user, null
+        );
+
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        // Workspace throws exception
+        when(workspaceClient.findEmailByGitName("testuser")).thenThrow(new RuntimeException("Workspace unavailable"));
+
+        // GitHub profile has email as fallback
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, "Test User", "fallback@github.com", null, null
+        );
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
+
+        List<UserData> users = client.fetchUsers();
+
+        assertNotNull(users);
+        assertEquals(1, users.size());
+
+        UserData userData = users.get(0);
+        assertEquals("fallback@github.com", userData.email());
+        assertEquals("real", userData.additionalMetrics().get("email_type"));
+    }
+
+    @Test
     void testFetchUsers_WorkspaceDisabled_FallbackToGitHub() throws ApiClientException {
         // Use client without workspace
         GitHubUser user = new GitHubUser(

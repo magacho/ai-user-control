@@ -10,7 +10,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -70,7 +69,7 @@ class GoogleWorkspaceClientTest {
 
         setupListMock(usersResult);
 
-        Optional<String> result = client.findEmailByGitName("unknown_user");
+        Optional<String> result = client.findEmailByGitName("unknown-user");
 
         assertFalse(result.isPresent());
     }
@@ -82,7 +81,7 @@ class GoogleWorkspaceClientTest {
 
         setupListMock(usersResult);
 
-        Optional<String> result = client.findEmailByGitName("unknown_user");
+        Optional<String> result = client.findEmailByGitName("unknown-user");
 
         assertFalse(result.isPresent());
     }
@@ -98,9 +97,26 @@ class GoogleWorkspaceClientTest {
         when(listRequest.setMaxResults(anyInt())).thenReturn(listRequest);
         when(listRequest.execute()).thenThrow(new IOException("API error"));
 
-        Optional<String> result = client.findEmailByGitName("error_user");
+        Optional<String> result = client.findEmailByGitName("error-user");
 
         assertFalse(result.isPresent());
+    }
+
+    @Test
+    void testFindEmailByGitName_invalidLogin() {
+        Optional<String> result = client.findEmailByGitName("user'--inject");
+
+        assertFalse(result.isPresent());
+        // Directory API should never be called for invalid logins
+        verifyNoInteractions(directory);
+    }
+
+    @Test
+    void testFindEmailByGitName_nullLogin() {
+        Optional<String> result = client.findEmailByGitName(null);
+
+        assertFalse(result.isPresent());
+        verifyNoInteractions(directory);
     }
 
     @Test

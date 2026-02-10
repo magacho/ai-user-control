@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 /**
  * Client for resolving corporate email addresses from GitHub logins
@@ -40,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GoogleWorkspaceClient {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleWorkspaceClient.class);
+    private static final Pattern VALID_GIT_LOGIN = Pattern.compile("^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$");
 
     private final Directory directory;
     private final GoogleWorkspaceProperties properties;
@@ -58,10 +60,18 @@ public class GoogleWorkspaceClient {
      * @return the corporate email if found, empty otherwise
      */
     public Optional<String> findEmailByGitName(String gitLogin) {
+        if (gitLogin == null || gitLogin.isBlank()) {
+            return Optional.empty();
+        }
         return cache.computeIfAbsent(gitLogin, this::lookupEmail);
     }
 
     private Optional<String> lookupEmail(String gitLogin) {
+        if (gitLogin == null || gitLogin.isBlank() || !VALID_GIT_LOGIN.matcher(gitLogin).matches()) {
+            log.debug("Workspace: skipping invalid git login '{}'", gitLogin);
+            return Optional.empty();
+        }
+
         try {
             String query = properties.getCustomSchema() + "." + properties.getGitNameField() + "='" + gitLogin + "'";
 
@@ -92,7 +102,11 @@ public class GoogleWorkspaceClient {
     Directory buildDirectoryService(GoogleWorkspaceProperties props) throws IOException, GeneralSecurityException {
         GoogleCredentials credentials = loadCredentials(props.getCredentials());
 
-        ServiceAccountCredentials serviceCredentials = (ServiceAccountCredentials) credentials;
+        if (!(credentials instanceof ServiceAccountCredentials serviceCredentials)) {
+            throw new IOException("Expected ServiceAccountCredentials but got: " + credentials.getClass().getSimpleName()
+                    + ". Ensure the credentials file is for a service account.");
+        }
+
         GoogleCredentials delegated = serviceCredentials
                 .createScoped(Collections.singleton(DirectoryScopes.ADMIN_DIRECTORY_USER_READONLY))
                 .createDelegated(props.getAdminEmail());
@@ -112,13 +126,13 @@ public class GoogleWorkspaceClient {
 
         Path path = Path.of(credentials);
         if (Files.exists(path)) {
-            log.info("Loading Workspace credentials from file: {}", path);
+            log.debug("Loading Workspace credentials from file: {}", path);
             try (InputStream is = new FileInputStream(path.toFile())) {
                 return GoogleCredentials.fromStream(is);
             }
         }
 
-        log.info("Loading Workspace credentials from inline JSON");
+        log.debug("Loading Workspace credentials from inline JSON");
         try (InputStream is = new ByteArrayInputStream(credentials.getBytes(StandardCharsets.UTF_8))) {
             return GoogleCredentials.fromStream(is);
         }
