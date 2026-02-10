@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -172,7 +173,7 @@ public class CursorCsvClient implements ToolApiClient {
         String resolvedStatus = status != null && !status.isEmpty() ? status : "active";
 
         // Last Active (opcional)
-        java.time.LocalDateTime lastActivityAt = null;
+        LocalDateTime lastActivityAt = null;
         if (record.isMapped("last_active")) {
             String lastActive = record.get("last_active");
             if (lastActive != null && !lastActive.isEmpty()) {
