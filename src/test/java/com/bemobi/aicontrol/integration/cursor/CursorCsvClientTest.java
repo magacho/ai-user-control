@@ -222,9 +222,9 @@ class CursorCsvClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertTrue(result.isSuccess());
-        assertEquals("cursor", result.getToolName());
-        assertTrue(result.getMessage().contains("accessible"));
+        assertTrue(result.success());
+        assertEquals("cursor", result.toolName());
+        assertTrue(result.message().contains("accessible"));
     }
 
     @Test
@@ -234,8 +234,8 @@ class CursorCsvClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertFalse(result.isSuccess());
-        assertEquals("cursor", result.getToolName());
+        assertFalse(result.success());
+        assertEquals("cursor", result.toolName());
     }
 
     @Test
@@ -245,7 +245,7 @@ class CursorCsvClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertFalse(result.isSuccess());
-        assertTrue(result.getMessage().contains("not configured"));
+        assertFalse(result.success());
+        assertTrue(result.message().contains("not configured"));
     }
 }

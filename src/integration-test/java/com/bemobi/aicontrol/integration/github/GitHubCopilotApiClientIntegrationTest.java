@@ -50,13 +50,13 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
 
         ConnectionTestResult result = githubClient.testConnection();
 
-        log.info("Tool: {}", result.getToolName());
-        log.info("Success: {}", result.isSuccess());
-        log.info("Message: {}", result.getMessage());
+        log.info("Tool: {}", result.toolName());
+        log.info("Success: {}", result.success());
+        log.info("Message: {}", result.message());
 
-        assertTrue(result.isSuccess(),
+        assertTrue(result.success(),
             "Connection test should succeed with valid credentials");
-        assertEquals("github-copilot", result.getToolName());
+        assertEquals("github-copilot", result.toolName());
     }
 
     @Test

@@ -80,14 +80,9 @@ class CursorApiClientTest {
     @Test
     void testFetchUsers_Success() throws ApiClientException {
         // Setup mock response
-        CursorTeamMember member = new CursorTeamMember();
-        member.setUserId("user_123");
-        member.setEmail("test@example.com");
-        member.setName("Test User");
-        member.setRole("admin");
+        CursorTeamMember member = new CursorTeamMember("Test User", "test@example.com", "admin", "user_123");
 
-        CursorTeamMembersResponse response = new CursorTeamMembersResponse();
-        response.setTeamMembers(Arrays.asList(member));
+        CursorTeamMembersResponse response = new CursorTeamMembersResponse(Arrays.asList(member));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
@@ -127,8 +122,7 @@ class CursorApiClientTest {
 
     @Test
     void testFetchUsers_NullTeamMembers() {
-        CursorTeamMembersResponse response = new CursorTeamMembersResponse();
-        response.setTeamMembers(null);
+        CursorTeamMembersResponse response = new CursorTeamMembersResponse(null);
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
@@ -163,14 +157,9 @@ class CursorApiClientTest {
     @Test
     void testFetchUsers_EmailNormalization() throws ApiClientException {
         // Test that emails are normalized to lowercase
-        CursorTeamMember member = new CursorTeamMember();
-        member.setUserId("user_123");
-        member.setEmail("Test.User@EXAMPLE.COM");
-        member.setName("Test User");
-        member.setRole("member");
+        CursorTeamMember member = new CursorTeamMember("Test User", "Test.User@EXAMPLE.COM", "member", "user_123");
 
-        CursorTeamMembersResponse response = new CursorTeamMembersResponse();
-        response.setTeamMembers(Arrays.asList(member));
+        CursorTeamMembersResponse response = new CursorTeamMembersResponse(Arrays.asList(member));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
@@ -186,20 +175,10 @@ class CursorApiClientTest {
     @Test
     void testFetchUsers_MultipleMembers() throws ApiClientException {
         // Test with multiple team members
-        CursorTeamMember member1 = new CursorTeamMember();
-        member1.setUserId("user_1");
-        member1.setEmail("user1@example.com");
-        member1.setName("User One");
-        member1.setRole("admin");
+        CursorTeamMember member1 = new CursorTeamMember("User One", "user1@example.com", "admin", "user_1");
+        CursorTeamMember member2 = new CursorTeamMember("User Two", "user2@example.com", "member", "user_2");
 
-        CursorTeamMember member2 = new CursorTeamMember();
-        member2.setUserId("user_2");
-        member2.setEmail("user2@example.com");
-        member2.setName("User Two");
-        member2.setRole("member");
-
-        CursorTeamMembersResponse response = new CursorTeamMembersResponse();
-        response.setTeamMembers(Arrays.asList(member1, member2));
+        CursorTeamMembersResponse response = new CursorTeamMembersResponse(Arrays.asList(member1, member2));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
@@ -219,8 +198,7 @@ class CursorApiClientTest {
     @Test
     void testTestConnection_Success() throws ApiClientException {
         // Setup successful fetch
-        CursorTeamMembersResponse response = new CursorTeamMembersResponse();
-        response.setTeamMembers(Arrays.asList());
+        CursorTeamMembersResponse response = new CursorTeamMembersResponse(Arrays.asList());
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
@@ -231,8 +209,8 @@ class CursorApiClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertTrue(result.isSuccess());
-        assertEquals("cursor", result.getToolName());
+        assertTrue(result.success());
+        assertEquals("cursor", result.toolName());
     }
 
     @Test
@@ -247,7 +225,7 @@ class CursorApiClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertFalse(result.isSuccess());
-        assertEquals("cursor", result.getToolName());
+        assertFalse(result.success());
+        assertEquals("cursor", result.toolName());
     }
 }

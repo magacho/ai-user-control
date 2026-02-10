@@ -10,10 +10,13 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import org.slf4j.MDC;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Runner that automatically collects user data from all AI tools and exports to CSV files.
@@ -57,6 +60,15 @@ public class DataCollectionRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        MDC.put("executionId", UUID.randomUUID().toString().substring(0, 8));
+        try {
+            executeCollection();
+        } finally {
+            MDC.clear();
+        }
+    }
+
+    private void executeCollection() {
         log.info("=".repeat(80));
         log.info("Starting AI User Control data collection and export");
         log.info("=".repeat(80));

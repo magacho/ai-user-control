@@ -4,6 +4,7 @@ import com.bemobi.aicontrol.integration.ToolApiClient;
 import com.bemobi.aicontrol.integration.common.UserData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ public class UserCollectionService {
 
         for (ToolApiClient client : apiClients) {
             String toolName = client.getToolName();
+            MDC.put("toolName", toolName);
 
             if (!client.isEnabled()) {
                 log.info("Skipping {} - integration is disabled", toolName);
@@ -65,6 +67,8 @@ public class UserCollectionService {
             } catch (Exception e) {
                 log.error("Error collecting users from {}: {}", client.getDisplayName(), e.getMessage(), e);
                 results.put(toolName, new ArrayList<>());
+            } finally {
+                MDC.remove("toolName");
             }
         }
 

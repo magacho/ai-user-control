@@ -53,7 +53,7 @@ class CsvExportServiceTest {
 
         List<String> lines = Files.readAllLines(csvFile);
         assertThat(lines).hasSize(3); // Header + 2 users
-        assertThat(lines.get(0)).isEqualTo("tool,email,name,status,last_activity_at,collected_at");
+        assertThat(lines.get(0)).isEqualTo("tool,email,name,status,last_activity_at,collected_at,email_type");
         assertThat(lines.get(1)).contains("claude", "user1@example.com", "User One", "active");
         assertThat(lines.get(2)).contains("claude", "user2@example.com", "User Two", "inactive");
     }
@@ -140,7 +140,7 @@ class CsvExportServiceTest {
 
         List<String> lines = Files.readAllLines(consolidatedFile);
         assertThat(lines).hasSize(4); // Header + 3 users
-        assertThat(lines.get(0)).isEqualTo("tool,email,name,status,last_activity_at,collected_at");
+        assertThat(lines.get(0)).isEqualTo("tool,email,name,status,last_activity_at,collected_at,email_type");
 
         String content = String.join("\n", lines);
         assertThat(content).contains("claude", "claude1@example.com");
@@ -162,7 +162,7 @@ class CsvExportServiceTest {
         assertThat(consolidatedFile).exists();
         List<String> lines = Files.readAllLines(consolidatedFile);
         assertThat(lines).hasSize(1); // Only header
-        assertThat(lines.get(0)).isEqualTo("tool,email,name,status,last_activity_at,collected_at");
+        assertThat(lines.get(0)).isEqualTo("tool,email,name,status,last_activity_at,collected_at,email_type");
     }
 
     @Test
@@ -177,7 +177,7 @@ class CsvExportServiceTest {
         // Assert
         List<String> lines = Files.readAllLines(generatedFiles.get(0));
         String header = lines.get(0);
-        assertThat(header).isEqualTo("tool,email,name,status,last_activity_at,collected_at");
+        assertThat(header).isEqualTo("tool,email,name,status,last_activity_at,collected_at,email_type");
     }
 
     @Test

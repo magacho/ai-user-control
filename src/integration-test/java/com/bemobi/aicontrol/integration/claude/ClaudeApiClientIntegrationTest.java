@@ -56,13 +56,13 @@ class ClaudeApiClientIntegrationTest extends BaseIntegrationTest {
 
         ConnectionTestResult result = claudeClient.testConnection();
 
-        log.info("Tool: {}", result.getToolName());
-        log.info("Success: {}", result.isSuccess());
-        log.info("Message: {}", result.getMessage());
+        log.info("Tool: {}", result.toolName());
+        log.info("Success: {}", result.success());
+        log.info("Message: {}", result.message());
 
-        assertTrue(result.isSuccess(),
+        assertTrue(result.success(),
             "Connection test should succeed with valid credentials");
-        assertEquals("claude-code", result.getToolName());
+        assertEquals("claude-code", result.toolName());
     }
 
     @Test

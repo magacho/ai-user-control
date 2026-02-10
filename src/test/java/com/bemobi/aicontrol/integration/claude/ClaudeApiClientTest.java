@@ -82,18 +82,16 @@ class ClaudeApiClientTest {
     @Test
     void testFetchUsers_Success() throws ApiClientException {
         // Setup mock response
-        ClaudeMember member = new ClaudeMember();
-        member.setId("user_123");
-        member.setEmail("test@example.com");
-        member.setName("Test User");
-        member.setStatus("active");
-        member.setRole("member");
-        member.setJoinedAt(LocalDateTime.now().minusDays(30));
-        member.setLastActiveAt(LocalDateTime.now());
+        LocalDateTime joinedAt = LocalDateTime.now().minusDays(30);
+        LocalDateTime lastActiveAt = LocalDateTime.now();
+        ClaudeMember member = new ClaudeMember(
+                "user_123", null, "test@example.com", "Test User",
+                "member", "active", joinedAt, lastActiveAt
+        );
 
-        ClaudeMembersResponse response = new ClaudeMembersResponse();
-        response.setData(Arrays.asList(member));
-        response.setHasMore(false);
+        ClaudeMembersResponse response = new ClaudeMembersResponse(
+                null, Arrays.asList(member), false, null, null
+        );
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestHeadersSpec);
@@ -152,9 +150,9 @@ class ClaudeApiClientTest {
     @Test
     void testTestConnection_Success() throws ApiClientException {
         // Setup successful fetch
-        ClaudeMembersResponse response = new ClaudeMembersResponse();
-        response.setData(Arrays.asList());
-        response.setHasMore(false);
+        ClaudeMembersResponse response = new ClaudeMembersResponse(
+                null, Arrays.asList(), false, null, null
+        );
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(any(java.util.function.Function.class))).thenReturn(requestHeadersSpec);
@@ -165,8 +163,8 @@ class ClaudeApiClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertTrue(result.isSuccess());
-        assertEquals("claude-code", result.getToolName());
+        assertTrue(result.success());
+        assertEquals("claude-code", result.toolName());
     }
 
     @Test
@@ -181,7 +179,7 @@ class ClaudeApiClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertFalse(result.isSuccess());
-        assertEquals("claude-code", result.getToolName());
+        assertFalse(result.success());
+        assertEquals("claude-code", result.toolName());
     }
 }

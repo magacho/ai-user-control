@@ -2,11 +2,10 @@ package com.bemobi.aicontrol.integration;
 
 import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.service.CsvExportService;
-import com.bemobi.aicontrol.service.UserCollectionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,8 +21,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Integration test to validate the complete export flow.
  */
-@SpringBootTest
 class ExportIntegrationTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ExportIntegrationTest.class);
 
     @TempDir
     Path tempDir;
@@ -53,10 +53,10 @@ class ExportIntegrationTest {
             assertThat(lines.get(0)).contains("tool,email,name,status");
         }
 
-        System.out.println("✅ Export integration test passed!");
-        System.out.println("Generated files:");
+        log.info("Export integration test passed!");
+        log.info("Generated files:");
         for (Path file : generatedFiles) {
-            System.out.println("  - " + file.getFileName());
+            log.info("  - {}", file.getFileName());
         }
     }
 

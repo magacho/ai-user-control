@@ -57,10 +57,6 @@ ai-control:
         enabled: ${AI_CONTROL_CURSOR_CSV_ENABLED:false}
         csv-path: ${AI_CONTROL_CURSOR_CSV_PATH:./cursor-exports}
 
-# Logging Configuration
-logging:
-  level:
-    root: INFO
-    com.bemobi.aicontrol: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+# Logging is configured via logback-spring.xml
+# - Default: human-readable console output
+# - Profile 'prod': structured JSON output with MDC context

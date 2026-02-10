@@ -11,9 +11,9 @@ class ConnectionTestResultTest {
         ConnectionTestResult result = ConnectionTestResult.success("test-tool");
 
         assertNotNull(result);
-        assertEquals("test-tool", result.getToolName());
-        assertTrue(result.isSuccess());
-        assertEquals("Connection successful", result.getMessage());
+        assertEquals("test-tool", result.toolName());
+        assertTrue(result.success());
+        assertEquals("Connection successful", result.message());
     }
 
     @Test
@@ -22,9 +22,9 @@ class ConnectionTestResultTest {
         ConnectionTestResult result = ConnectionTestResult.success("test-tool", customMessage);
 
         assertNotNull(result);
-        assertEquals("test-tool", result.getToolName());
-        assertTrue(result.isSuccess());
-        assertEquals(customMessage, result.getMessage());
+        assertEquals("test-tool", result.toolName());
+        assertTrue(result.success());
+        assertEquals(customMessage, result.message());
     }
 
     @Test
@@ -33,9 +33,9 @@ class ConnectionTestResultTest {
         ConnectionTestResult result = ConnectionTestResult.failure("test-tool", errorMessage);
 
         assertNotNull(result);
-        assertEquals("test-tool", result.getToolName());
-        assertFalse(result.isSuccess());
-        assertEquals(errorMessage, result.getMessage());
+        assertEquals("test-tool", result.toolName());
+        assertFalse(result.success());
+        assertEquals(errorMessage, result.message());
     }
 
     @Test

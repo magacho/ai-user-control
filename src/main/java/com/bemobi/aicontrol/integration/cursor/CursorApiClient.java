@@ -87,13 +87,13 @@ public class CursorApiClient implements ToolApiClient {
                         log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
                 .block(Duration.ofMillis(properties.getTimeout()));
 
-            if (response == null || response.getTeamMembers() == null) {
+            if (response == null || response.teamMembers() == null) {
                 throw new ApiClientException("Empty response from Cursor Admin API");
             }
 
-            log.info("Successfully fetched {} users from Cursor", response.getTeamMembers().size());
+            log.info("Successfully fetched {} users from Cursor", response.teamMembers().size());
 
-            return response.getTeamMembers().stream()
+            return response.teamMembers().stream()
                 .map(this::mapToUserData)
                 .collect(Collectors.toList());
 
@@ -120,16 +120,16 @@ public class CursorApiClient implements ToolApiClient {
 
     private UserData mapToUserData(CursorTeamMember member) {
         UserData userData = new UserData();
-        userData.setEmail(member.getEmail() != null ? member.getEmail().toLowerCase() : null);
-        userData.setName(member.getName());
+        userData.setEmail(member.email() != null ? member.email().toLowerCase() : null);
+        userData.setName(member.name());
         // Cursor API doesn't return explicit status, default to "active"
         userData.setStatus("active");
         userData.setLastActivityAt(null); // Not available in Admin API
 
         // Adicionar métricas adicionais
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("role", member.getRole());
-        metrics.put("user_id", member.getUserId());
+        metrics.put("role", member.role());
+        metrics.put("user_id", member.userId());
         userData.setAdditionalMetrics(metrics);
 
         return userData;

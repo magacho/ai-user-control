@@ -85,15 +85,15 @@ public class GitHubCopilotApiClient implements ToolApiClient {
                         log.warn("Server error, retrying request. Attempt: {}", signal.totalRetries() + 1)))
                 .block(Duration.ofMillis(properties.getTimeout()));
 
-            if (response == null || response.getSeats() == null) {
+            if (response == null || response.seats() == null) {
                 log.warn("Empty response from GitHub Copilot API");
                 return Collections.emptyList();
             }
 
-            log.info("Successfully fetched {} Copilot seats from GitHub", response.getTotalSeats());
-            log.info("Fetching public emails for {} users (this may take a moment)", response.getTotalSeats());
+            log.info("Successfully fetched {} Copilot seats from GitHub", response.totalSeats());
+            log.info("Fetching public emails for {} users (this may take a moment)", response.totalSeats());
 
-            return response.getSeats().stream()
+            return response.seats().stream()
                 .map(this::mapToUserData)
                 .collect(Collectors.toList());
 
@@ -124,39 +124,39 @@ public class GitHubCopilotApiClient implements ToolApiClient {
     private UserData mapToUserData(GitHubCopilotSeat seat) {
         UserData userData = new UserData();
 
-        GitHubUser assignee = seat.getAssignee();
+        GitHubUser assignee = seat.assignee();
         if (assignee != null) {
             // Tentar obter email real do perfil público do usuário
             String email = null;
             String emailType = "generated";
 
             try {
-                GitHubUser publicProfile = fetchUserPublicProfile(assignee.getLogin());
-                if (publicProfile != null && publicProfile.getEmail() != null && !publicProfile.getEmail().isEmpty()) {
-                    email = publicProfile.getEmail();
+                GitHubUser publicProfile = fetchUserPublicProfile(assignee.login());
+                if (publicProfile != null && publicProfile.email() != null && !publicProfile.email().isEmpty()) {
+                    email = publicProfile.email();
                     emailType = "real";
-                    log.debug("Found public email for user {}: {}", assignee.getLogin(), email);
+                    log.debug("Found public email for user {}: {}", assignee.login(), email);
                 }
             } catch (Exception e) {
-                log.debug("Could not fetch public profile for user {}: {}", assignee.getLogin(), e.getMessage());
+                log.debug("Could not fetch public profile for user {}: {}", assignee.login(), e.getMessage());
             }
 
             // Fallback para email gerado se não encontrou email público
             if (email == null || email.isEmpty()) {
-                email = assignee.getLogin() + "@github.local";
-                log.info("Email not available for user {}, using generated email", assignee.getLogin());
+                email = assignee.login() + "@github.local";
+                log.info("Email not available for user {}, using generated email", assignee.login());
             }
 
             userData.setEmail(email.toLowerCase());
-            userData.setName(assignee.getName() != null ? assignee.getName() : assignee.getLogin());
+            userData.setName(assignee.name() != null ? assignee.name() : assignee.login());
 
             // Métricas adicionais
             Map<String, Object> metrics = new HashMap<>();
-            metrics.put("last_activity_editor", seat.getLastActivityEditor());
-            metrics.put("created_at", seat.getCreatedAt());
-            metrics.put("updated_at", seat.getUpdatedAt());
-            metrics.put("github_login", assignee.getLogin());
-            metrics.put("github_id", assignee.getId());
+            metrics.put("last_activity_editor", seat.lastActivityEditor());
+            metrics.put("created_at", seat.createdAt());
+            metrics.put("updated_at", seat.updatedAt());
+            metrics.put("github_login", assignee.login());
+            metrics.put("github_id", assignee.id());
             metrics.put("email_type", emailType);
             userData.setAdditionalMetrics(metrics);
         }
@@ -164,8 +164,8 @@ public class GitHubCopilotApiClient implements ToolApiClient {
         userData.setStatus("active"); // Todos os seats são ativos
 
         // Converter OffsetDateTime para LocalDateTime
-        if (seat.getLastActivityAt() != null) {
-            userData.setLastActivityAt(seat.getLastActivityAt().toLocalDateTime());
+        if (seat.lastActivityAt() != null) {
+            userData.setLastActivityAt(seat.lastActivityAt().toLocalDateTime());
         }
 
         return userData;

@@ -83,22 +83,16 @@ class GitHubCopilotApiClientTest {
     @Test
     void testFetchUsers_Success() throws ApiClientException {
         // Setup mock response
-        GitHubUser user = new GitHubUser();
-        user.setLogin("testuser");
-        user.setId(123L);
-        user.setEmail("test@example.com");
-        user.setName("Test User");
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", "test@example.com", null, null
+        );
 
-        GitHubCopilotSeat seat = new GitHubCopilotSeat();
-        seat.setAssignee(user);
-        seat.setCreatedAt(OffsetDateTime.now().minusDays(30));
-        seat.setUpdatedAt(OffsetDateTime.now());
-        seat.setLastActivityAt(OffsetDateTime.now());
-        seat.setLastActivityEditor("vscode");
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                now.minusDays(30), now, null, now, "vscode", user, null
+        );
 
-        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse();
-        response.setTotalSeats(1);
-        response.setSeats(Arrays.asList(seat));
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
 
         // Mock Copilot seats call
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
@@ -109,9 +103,9 @@ class GitHubCopilotApiClientTest {
         when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
 
         // Mock public profile call - user has public email
-        GitHubUser publicProfile = new GitHubUser();
-        publicProfile.setEmail("test@example.com");
-        publicProfile.setName("Test User");
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, "Test User", "test@example.com", null, null
+        );
         when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
 
         // Execute
@@ -135,20 +129,16 @@ class GitHubCopilotApiClientTest {
     @Test
     void testFetchUsers_NoEmail() throws ApiClientException {
         // Setup mock response without email
-        GitHubUser user = new GitHubUser();
-        user.setLogin("testuser");
-        user.setId(123L);
-        user.setEmail(null); // No email available
-        user.setName("Test User");
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", null, null, null
+        );
 
-        GitHubCopilotSeat seat = new GitHubCopilotSeat();
-        seat.setAssignee(user);
-        seat.setLastActivityAt(OffsetDateTime.now());
-        seat.setLastActivityEditor("vscode");
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                null, null, null, now, "vscode", user, null
+        );
 
-        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse();
-        response.setTotalSeats(1);
-        response.setSeats(Arrays.asList(seat));
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
@@ -158,8 +148,9 @@ class GitHubCopilotApiClientTest {
         when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
 
         // Mock public profile call - user has no public email
-        GitHubUser publicProfile = new GitHubUser();
-        publicProfile.setEmail(null);
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, null, null, null, null
+        );
         when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
 
         // Execute
@@ -224,9 +215,7 @@ class GitHubCopilotApiClientTest {
 
     @Test
     void testTestConnection_Success() throws ApiClientException {
-        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse();
-        response.setTotalSeats(0);
-        response.setSeats(Arrays.asList());
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(0, Arrays.asList());
 
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
@@ -237,8 +226,8 @@ class GitHubCopilotApiClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertTrue(result.isSuccess());
-        assertEquals("github-copilot", result.getToolName());
+        assertTrue(result.success());
+        assertEquals("github-copilot", result.toolName());
     }
 
     @Test
@@ -253,7 +242,7 @@ class GitHubCopilotApiClientTest {
         ConnectionTestResult result = client.testConnection();
 
         assertNotNull(result);
-        assertFalse(result.isSuccess());
-        assertEquals("github-copilot", result.getToolName());
+        assertFalse(result.success());
+        assertEquals("github-copilot", result.toolName());
     }
 }

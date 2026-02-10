@@ -87,13 +87,13 @@ public class ClaudeApiClient implements ToolApiClient {
                         log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
                 .block(Duration.ofMillis(properties.getTimeout()));
 
-            if (response == null || response.getData() == null) {
+            if (response == null || response.data() == null) {
                 throw new ApiClientException("Empty response from Claude Admin API");
             }
 
-            log.info("Successfully fetched {} users from Claude Code", response.getData().size());
+            log.info("Successfully fetched {} users from Claude Code", response.data().size());
 
-            return response.getData().stream()
+            return response.data().stream()
                 .map(this::mapToUserData)
                 .collect(Collectors.toList());
 
@@ -120,16 +120,16 @@ public class ClaudeApiClient implements ToolApiClient {
 
     private UserData mapToUserData(ClaudeMember member) {
         UserData userData = new UserData();
-        userData.setEmail(member.getEmail() != null ? member.getEmail().toLowerCase() : null);
-        userData.setName(member.getName());
-        userData.setStatus(member.getStatus());
-        userData.setLastActivityAt(member.getLastActiveAt());
+        userData.setEmail(member.email() != null ? member.email().toLowerCase() : null);
+        userData.setName(member.name());
+        userData.setStatus(member.status());
+        userData.setLastActivityAt(member.lastActiveAt());
 
         // Adicionar métricas adicionais
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("role", member.getRole());
-        metrics.put("joined_at", member.getJoinedAt());
-        metrics.put("member_id", member.getId());
+        metrics.put("role", member.role());
+        metrics.put("joined_at", member.joinedAt());
+        metrics.put("member_id", member.id());
         userData.setAdditionalMetrics(metrics);
 
         return userData;
