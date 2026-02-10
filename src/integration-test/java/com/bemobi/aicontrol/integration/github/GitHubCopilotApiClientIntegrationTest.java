@@ -95,9 +95,14 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
                     "Should have last_activity_editor metric");
             }
 
-            // Check for fallback email pattern
-            if (firstUser.email().endsWith("@github.local")) {
-                log.info("Note: Using fallback email (public email not available)");
+            // Check for email resolution type
+            String emailType = (String) firstUser.additionalMetrics().get("email_type");
+            if ("workspace".equals(emailType)) {
+                log.info("Note: Email resolved via Google Workspace");
+            } else if ("not_found".equals(emailType)) {
+                log.info("Note: Email not resolved (marked as [SEM-USR-GITHUB])");
+            } else {
+                log.info("Note: Email resolved via GitHub public profile");
             }
         } else {
             log.info("No Copilot seats found (organization may not have Copilot enabled)");

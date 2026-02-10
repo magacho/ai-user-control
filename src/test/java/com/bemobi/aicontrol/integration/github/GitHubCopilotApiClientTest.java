@@ -6,6 +6,7 @@ import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeat;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeatsResponse;
 import com.bemobi.aicontrol.integration.github.dto.GitHubUser;
+import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ import reactor.core.publisher.Mono;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -47,7 +49,11 @@ class GitHubCopilotApiClientTest {
     @Mock
     private GitHubApiProperties properties;
 
+    @Mock
+    private GoogleWorkspaceClient workspaceClient;
+
     private GitHubCopilotApiClient client;
+    private GitHubCopilotApiClient clientWithoutWorkspace;
 
     @BeforeEach
     void setUp() {
@@ -62,7 +68,8 @@ class GitHubCopilotApiClientTest {
         when(webClientBuilder.defaultHeader(anyString(), anyString())).thenReturn(webClientBuilder);
         when(webClientBuilder.build()).thenReturn(webClient);
 
-        client = new GitHubCopilotApiClient(webClientBuilder, properties);
+        client = new GitHubCopilotApiClient(webClientBuilder, properties, workspaceClient);
+        clientWithoutWorkspace = new GitHubCopilotApiClient(webClientBuilder, properties, null);
     }
 
     @Test
@@ -102,33 +109,68 @@ class GitHubCopilotApiClientTest {
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
 
-        // Mock public profile call - user has public email
-        GitHubUser publicProfile = new GitHubUser(
-                null, null, null, null, null, false, "Test User", "test@example.com", null, null
-        );
-        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
+        // Workspace resolves email
+        when(workspaceClient.findEmailByGitName("testuser")).thenReturn(Optional.of("testuser@corp.com"));
 
         // Execute
         List<UserData> users = client.fetchUsers();
 
-        // Verify
+        // Verify - workspace takes priority
         assertNotNull(users);
         assertEquals(1, users.size());
 
         UserData userData = users.get(0);
-        assertEquals("test@example.com", userData.email());
+        assertEquals("testuser@corp.com", userData.email());
         assertEquals("Test User", userData.name());
         assertEquals("active", userData.status());
         assertNotNull(userData.lastActivityAt());
         assertEquals("vscode", userData.additionalMetrics().get("last_activity_editor"));
         assertEquals("testuser", userData.additionalMetrics().get("github_login"));
         assertEquals(123L, userData.additionalMetrics().get("github_id"));
+        assertEquals("workspace", userData.additionalMetrics().get("email_type"));
+    }
+
+    @Test
+    void testFetchUsers_WorkspaceNotFound_FallbackToGitHub() throws ApiClientException {
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", null, null, null
+        );
+
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                now.minusDays(30), now, null, now, "vscode", user, null
+        );
+
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        // Workspace returns empty
+        when(workspaceClient.findEmailByGitName("testuser")).thenReturn(Optional.empty());
+
+        // GitHub profile has email
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, "Test User", "test@github-public.com", null, null
+        );
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
+
+        List<UserData> users = client.fetchUsers();
+
+        assertNotNull(users);
+        assertEquals(1, users.size());
+
+        UserData userData = users.get(0);
+        assertEquals("test@github-public.com", userData.email());
         assertEquals("real", userData.additionalMetrics().get("email_type"));
     }
 
     @Test
-    void testFetchUsers_NoEmail() throws ApiClientException {
-        // Setup mock response without email
+    void testFetchUsers_WorkspaceNotFound_GitHubNoEmail_Fallback() throws ApiClientException {
         GitHubUser user = new GitHubUser(
                 "testuser", 123L, null, null, null, false, "Test User", null, null, null
         );
@@ -147,23 +189,137 @@ class GitHubCopilotApiClientTest {
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
 
-        // Mock public profile call - user has no public email
+        // Workspace returns empty
+        when(workspaceClient.findEmailByGitName("testuser")).thenReturn(Optional.empty());
+
+        // GitHub profile has no email
         GitHubUser publicProfile = new GitHubUser(
                 null, null, null, null, null, false, null, null, null, null
         );
         when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
 
-        // Execute
         List<UserData> users = client.fetchUsers();
 
-        // Verify
         assertNotNull(users);
         assertEquals(1, users.size());
 
         UserData userData = users.get(0);
-        assertEquals("testuser@github.local", userData.email()); // Fallback email
-        assertEquals("Test User", userData.name());
-        assertEquals("generated", userData.additionalMetrics().get("email_type"));
+        assertEquals("[sem-usr-github]", userData.email());
+        assertEquals("not_found", userData.additionalMetrics().get("email_type"));
+    }
+
+    @Test
+    void testFetchUsers_WorkspaceThrowsException_FallbackToGitHub() throws ApiClientException {
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", null, null, null
+        );
+
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                now.minusDays(30), now, null, now, "vscode", user, null
+        );
+
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        // Workspace throws exception
+        when(workspaceClient.findEmailByGitName("testuser")).thenThrow(new RuntimeException("Workspace unavailable"));
+
+        // GitHub profile has email as fallback
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, "Test User", "fallback@github.com", null, null
+        );
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
+
+        List<UserData> users = client.fetchUsers();
+
+        assertNotNull(users);
+        assertEquals(1, users.size());
+
+        UserData userData = users.get(0);
+        assertEquals("fallback@github.com", userData.email());
+        assertEquals("real", userData.additionalMetrics().get("email_type"));
+    }
+
+    @Test
+    void testFetchUsers_WorkspaceDisabled_FallbackToGitHub() throws ApiClientException {
+        // Use client without workspace
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", "test@example.com", null, null
+        );
+
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                now.minusDays(30), now, null, now, "vscode", user, null
+        );
+
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        // Mock public profile call
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, "Test User", "test@example.com", null, null
+        );
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
+
+        List<UserData> users = clientWithoutWorkspace.fetchUsers();
+
+        assertNotNull(users);
+        assertEquals(1, users.size());
+
+        UserData userData = users.get(0);
+        assertEquals("test@example.com", userData.email());
+        assertEquals("real", userData.additionalMetrics().get("email_type"));
+
+        // Workspace should never be called
+        verifyNoInteractions(workspaceClient);
+    }
+
+    @Test
+    void testFetchUsers_WorkspaceDisabled_NoEmail() throws ApiClientException {
+        GitHubUser user = new GitHubUser(
+                "testuser", 123L, null, null, null, false, "Test User", null, null, null
+        );
+
+        OffsetDateTime now = OffsetDateTime.now();
+        GitHubCopilotSeat seat = new GitHubCopilotSeat(
+                null, null, null, now, "vscode", user, null
+        );
+
+        GitHubCopilotSeatsResponse response = new GitHubCopilotSeatsResponse(1, Arrays.asList(seat));
+
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(eq("/orgs/{org}/copilot/billing/seats"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(eq("/users/{username}"), anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(GitHubCopilotSeatsResponse.class)).thenReturn(Mono.just(response));
+
+        GitHubUser publicProfile = new GitHubUser(
+                null, null, null, null, null, false, null, null, null, null
+        );
+        when(responseSpec.bodyToMono(GitHubUser.class)).thenReturn(Mono.just(publicProfile));
+
+        List<UserData> users = clientWithoutWorkspace.fetchUsers();
+
+        assertNotNull(users);
+        assertEquals(1, users.size());
+
+        UserData userData = users.get(0);
+        assertEquals("[sem-usr-github]", userData.email());
+        assertEquals("not_found", userData.additionalMetrics().get("email_type"));
     }
 
     @Test
