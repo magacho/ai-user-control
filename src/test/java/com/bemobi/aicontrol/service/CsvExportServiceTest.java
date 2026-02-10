@@ -252,6 +252,49 @@ class CsvExportServiceTest {
         assertThat(lines).hasSize(11); // Header + 10 users
     }
 
+    @Test
+    void testExportToUnifiedCsv_CorrectHeaders() throws IOException {
+        // Arrange
+        List<UnifiedUser> users = List.of(
+                new UnifiedUser("user@example.com", "User", 2, true, true, false,
+                        "2026-02-05T14:30:00", "2026-02-06T10:00:00", "",
+                        "active", "active", "", "corporate")
+        );
+
+        // Act
+        Path csvFile = service.exportToUnifiedCsv(users);
+
+        // Assert
+        assertThat(csvFile).exists();
+        assertThat(csvFile.getFileName().toString()).startsWith("users-unified-");
+        assertThat(csvFile.getFileName().toString()).endsWith(".csv");
+
+        List<String> lines = Files.readAllLines(csvFile);
+        assertThat(lines).hasSize(2); // Header + 1 user
+        assertThat(lines.get(0)).isEqualTo(
+                "email,name,tools_count,uses_claude,uses_copilot,uses_cursor,"
+                        + "claude_last_activity,copilot_last_activity,cursor_last_activity,"
+                        + "claude_status,copilot_status,cursor_status,email_type"
+        );
+    }
+
+    @Test
+    void testExportToUnifiedCsv_BooleanValues() throws IOException {
+        // Arrange
+        List<UnifiedUser> users = List.of(
+                new UnifiedUser("user@example.com", "User", 2, true, false, true,
+                        "", "", "",
+                        "", "", "", "")
+        );
+
+        // Act
+        Path csvFile = service.exportToUnifiedCsv(users);
+
+        // Assert
+        List<String> lines = Files.readAllLines(csvFile);
+        assertThat(lines.get(1)).contains("true,false,true");
+    }
+
     private UserData createUserData(String email, String name, String status) {
         return new UserData(email, name, status, LocalDateTime.now(), null, null);
     }
