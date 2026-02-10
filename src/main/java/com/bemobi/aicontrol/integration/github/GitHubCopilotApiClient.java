@@ -122,12 +122,12 @@ public class GitHubCopilotApiClient implements ToolApiClient {
     }
 
     private UserData mapToUserData(GitHubCopilotSeat seat) {
-        UserData userData = new UserData();
+        String email = null;
+        String name = null;
+        Map<String, Object> metrics = new HashMap<>();
 
         GitHubUser assignee = seat.assignee();
         if (assignee != null) {
-            // Tentar obter email real do perfil público do usuário
-            String email = null;
             String emailType = "generated";
 
             try {
@@ -141,34 +141,30 @@ public class GitHubCopilotApiClient implements ToolApiClient {
                 log.debug("Could not fetch public profile for user {}: {}", assignee.login(), e.getMessage());
             }
 
-            // Fallback para email gerado se não encontrou email público
             if (email == null || email.isEmpty()) {
                 email = assignee.login() + "@github.local";
                 log.info("Email not available for user {}, using generated email", assignee.login());
             }
 
-            userData.setEmail(email.toLowerCase());
-            userData.setName(assignee.name() != null ? assignee.name() : assignee.login());
+            email = email.toLowerCase();
+            name = assignee.name() != null ? assignee.name() : assignee.login();
 
-            // Métricas adicionais
-            Map<String, Object> metrics = new HashMap<>();
             metrics.put("last_activity_editor", seat.lastActivityEditor());
             metrics.put("created_at", seat.createdAt());
             metrics.put("updated_at", seat.updatedAt());
             metrics.put("github_login", assignee.login());
             metrics.put("github_id", assignee.id());
             metrics.put("email_type", emailType);
-            userData.setAdditionalMetrics(metrics);
         }
 
-        userData.setStatus("active"); // Todos os seats são ativos
-
-        // Converter OffsetDateTime para LocalDateTime
-        if (seat.lastActivityAt() != null) {
-            userData.setLastActivityAt(seat.lastActivityAt().toLocalDateTime());
-        }
-
-        return userData;
+        return new UserData(
+                email,
+                name,
+                "active",
+                seat.lastActivityAt() != null ? seat.lastActivityAt().toLocalDateTime() : null,
+                metrics,
+                null
+        );
     }
 
     /**

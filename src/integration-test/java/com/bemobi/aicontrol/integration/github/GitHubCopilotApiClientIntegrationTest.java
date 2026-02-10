@@ -72,31 +72,31 @@ class GitHubCopilotApiClientIntegrationTest extends BaseIntegrationTest {
         if (!users.isEmpty()) {
             UserData firstUser = users.get(0);
 
-            assertNotNull(firstUser.getEmail(), "Email should not be null");
-            assertNotNull(firstUser.getName(), "Name should not be null");
-            assertNotNull(firstUser.getStatus(), "Status should not be null");
-            assertEquals("active", firstUser.getStatus(), "All seats should be active");
+            assertNotNull(firstUser.email(), "Email should not be null");
+            assertNotNull(firstUser.name(), "Name should not be null");
+            assertNotNull(firstUser.status(), "Status should not be null");
+            assertEquals("active", firstUser.status(), "All seats should be active");
 
             log.debug("Sample seat:");
-            log.debug("  Email: {}", firstUser.getEmail());
-            log.debug("  Name: {}", firstUser.getName());
-            log.debug("  Status: {}", firstUser.getStatus());
-            log.debug("  Last Activity: {}", firstUser.getLastActivityAt());
+            log.debug("  Email: {}", firstUser.email());
+            log.debug("  Name: {}", firstUser.name());
+            log.debug("  Status: {}", firstUser.status());
+            log.debug("  Last Activity: {}", firstUser.lastActivityAt());
 
-            if (firstUser.getAdditionalMetrics() != null && !firstUser.getAdditionalMetrics().isEmpty()) {
+            if (firstUser.additionalMetrics() != null && !firstUser.additionalMetrics().isEmpty()) {
                 log.debug("  Additional Metrics:");
-                firstUser.getAdditionalMetrics().forEach((key, value) ->
+                firstUser.additionalMetrics().forEach((key, value) ->
                     log.debug("    {}: {}", key, value));
 
                 // Validate GitHub-specific metrics
-                assertTrue(firstUser.getAdditionalMetrics().containsKey("github_login"),
+                assertTrue(firstUser.additionalMetrics().containsKey("github_login"),
                     "Should have github_login metric");
-                assertTrue(firstUser.getAdditionalMetrics().containsKey("last_activity_editor"),
+                assertTrue(firstUser.additionalMetrics().containsKey("last_activity_editor"),
                     "Should have last_activity_editor metric");
             }
 
             // Check for fallback email pattern
-            if (firstUser.getEmail().endsWith("@github.local")) {
+            if (firstUser.email().endsWith("@github.local")) {
                 log.info("Note: Using fallback email (public email not available)");
             }
         } else {

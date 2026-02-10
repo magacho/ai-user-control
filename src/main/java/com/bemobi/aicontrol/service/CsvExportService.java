@@ -158,16 +158,16 @@ public class CsvExportService {
             throws IOException {
         // Get email_type from additional metrics (for GitHub Copilot)
         String emailType = "";
-        if (user.getAdditionalMetrics() != null && user.getAdditionalMetrics().containsKey("email_type")) {
-            emailType = user.getAdditionalMetrics().get("email_type").toString();
+        if (user.additionalMetrics() != null && user.additionalMetrics().containsKey("email_type")) {
+            emailType = user.additionalMetrics().get("email_type").toString();
         }
 
         csvPrinter.printRecord(
                 toolName,
-                user.getEmail() != null ? user.getEmail() : "",
-                user.getName() != null ? user.getName() : "",
-                user.getStatus() != null ? user.getStatus() : "",
-                user.getLastActivityAt() != null ? user.getLastActivityAt().format(CSV_DATETIME_FORMATTER) : "",
+                user.email() != null ? user.email() : "",
+                user.name() != null ? user.name() : "",
+                user.status() != null ? user.status() : "",
+                user.lastActivityAt() != null ? user.lastActivityAt().format(CSV_DATETIME_FORMATTER) : "",
                 collectedAt.format(CSV_DATETIME_FORMATTER),
                 emailType
         );

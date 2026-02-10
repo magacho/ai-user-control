@@ -116,14 +116,14 @@ class GitHubCopilotApiClientTest {
         assertEquals(1, users.size());
 
         UserData userData = users.get(0);
-        assertEquals("test@example.com", userData.getEmail());
-        assertEquals("Test User", userData.getName());
-        assertEquals("active", userData.getStatus());
-        assertNotNull(userData.getLastActivityAt());
-        assertEquals("vscode", userData.getAdditionalMetrics().get("last_activity_editor"));
-        assertEquals("testuser", userData.getAdditionalMetrics().get("github_login"));
-        assertEquals(123L, userData.getAdditionalMetrics().get("github_id"));
-        assertEquals("real", userData.getAdditionalMetrics().get("email_type"));
+        assertEquals("test@example.com", userData.email());
+        assertEquals("Test User", userData.name());
+        assertEquals("active", userData.status());
+        assertNotNull(userData.lastActivityAt());
+        assertEquals("vscode", userData.additionalMetrics().get("last_activity_editor"));
+        assertEquals("testuser", userData.additionalMetrics().get("github_login"));
+        assertEquals(123L, userData.additionalMetrics().get("github_id"));
+        assertEquals("real", userData.additionalMetrics().get("email_type"));
     }
 
     @Test
@@ -161,9 +161,9 @@ class GitHubCopilotApiClientTest {
         assertEquals(1, users.size());
 
         UserData userData = users.get(0);
-        assertEquals("testuser@github.local", userData.getEmail()); // Fallback email
-        assertEquals("Test User", userData.getName());
-        assertEquals("generated", userData.getAdditionalMetrics().get("email_type"));
+        assertEquals("testuser@github.local", userData.email()); // Fallback email
+        assertEquals("Test User", userData.name());
+        assertEquals("generated", userData.additionalMetrics().get("email_type"));
     }
 
     @Test

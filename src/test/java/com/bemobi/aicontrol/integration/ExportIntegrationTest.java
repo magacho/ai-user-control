@@ -61,11 +61,6 @@ class ExportIntegrationTest {
     }
 
     private UserData createTestUser(String email, String name) {
-        UserData user = new UserData();
-        user.setEmail(email);
-        user.setName(name);
-        user.setStatus("active");
-        user.setLastActivityAt(LocalDateTime.now());
-        return user;
+        return new UserData(email, name, "active", LocalDateTime.now(), null, null);
     }
 }

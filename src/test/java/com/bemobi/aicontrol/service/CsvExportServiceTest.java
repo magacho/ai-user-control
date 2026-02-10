@@ -101,8 +101,7 @@ class CsvExportServiceTest {
     @Test
     void testExportToCsv_NullValues_HandledGracefully() throws IOException {
         // Arrange
-        UserData userWithNulls = new UserData();
-        userWithNulls.setEmail("user@example.com");
+        UserData userWithNulls = new UserData("user@example.com", null, null, null, null, null);
         // name, status, lastActivityAt are null
 
         Map<String, List<UserData>> userData = new HashMap<>();
@@ -183,8 +182,8 @@ class CsvExportServiceTest {
     @Test
     void testCsvFormat_TimestampFormat() throws IOException {
         // Arrange
-        UserData user = createUserData("user@example.com", "User", "active");
-        user.setLastActivityAt(LocalDateTime.of(2026, 2, 5, 14, 30, 45));
+        UserData user = new UserData("user@example.com", "User", "active",
+                LocalDateTime.of(2026, 2, 5, 14, 30, 45), null, null);
 
         Map<String, List<UserData>> userData = new HashMap<>();
         userData.put("claude", Arrays.asList(user));
@@ -254,11 +253,6 @@ class CsvExportServiceTest {
     }
 
     private UserData createUserData(String email, String name, String status) {
-        UserData userData = new UserData();
-        userData.setEmail(email);
-        userData.setName(name);
-        userData.setStatus(status);
-        userData.setLastActivityAt(LocalDateTime.now());
-        return userData;
+        return new UserData(email, name, status, LocalDateTime.now(), null, null);
     }
 }

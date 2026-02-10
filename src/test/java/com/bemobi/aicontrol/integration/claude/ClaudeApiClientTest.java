@@ -107,12 +107,12 @@ class ClaudeApiClientTest {
         assertEquals(1, users.size());
 
         UserData userData = users.get(0);
-        assertEquals("test@example.com", userData.getEmail());
-        assertEquals("Test User", userData.getName());
-        assertEquals("active", userData.getStatus());
-        assertNotNull(userData.getLastActivityAt());
-        assertEquals("member", userData.getAdditionalMetrics().get("role"));
-        assertEquals("user_123", userData.getAdditionalMetrics().get("member_id"));
+        assertEquals("test@example.com", userData.email());
+        assertEquals("Test User", userData.name());
+        assertEquals("active", userData.status());
+        assertNotNull(userData.lastActivityAt());
+        assertEquals("member", userData.additionalMetrics().get("role"));
+        assertEquals("user_123", userData.additionalMetrics().get("member_id"));
     }
 
     @Test

@@ -119,20 +119,18 @@ public class CursorApiClient implements ToolApiClient {
     }
 
     private UserData mapToUserData(CursorTeamMember member) {
-        UserData userData = new UserData();
-        userData.setEmail(member.email() != null ? member.email().toLowerCase() : null);
-        userData.setName(member.name());
-        // Cursor API doesn't return explicit status, default to "active"
-        userData.setStatus("active");
-        userData.setLastActivityAt(null); // Not available in Admin API
-
-        // Adicionar métricas adicionais
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("role", member.role());
         metrics.put("user_id", member.userId());
-        userData.setAdditionalMetrics(metrics);
 
-        return userData;
+        return new UserData(
+                member.email() != null ? member.email().toLowerCase() : null,
+                member.name(),
+                "active",
+                null,
+                metrics,
+                null
+        );
     }
 
     private Mono<? extends Throwable> handle4xxError(ClientResponse response) {
