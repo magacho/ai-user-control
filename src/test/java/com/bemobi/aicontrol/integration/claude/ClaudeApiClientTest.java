@@ -5,6 +5,8 @@ import com.bemobi.aicontrol.integration.claude.dto.ClaudeMembersResponse;
 import com.bemobi.aicontrol.integration.common.ApiClientException;
 import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,7 +63,9 @@ class ClaudeApiClientTest {
         when(webClientBuilder.defaultHeader(anyString(), anyString())).thenReturn(webClientBuilder);
         when(webClientBuilder.build()).thenReturn(webClient);
 
-        client = new ClaudeApiClient(webClientBuilder, properties);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        client = new ClaudeApiClient(webClientBuilder, properties, objectMapper);
     }
 
     @Test
@@ -113,6 +117,9 @@ class ClaudeApiClientTest {
         assertNotNull(userData.lastActivityAt());
         assertEquals("member", userData.additionalMetrics().get("role"));
         assertEquals("user_123", userData.additionalMetrics().get("member_id"));
+        assertNotNull(userData.rawJson());
+        assertTrue(userData.rawJson().contains("test@example.com"));
+        assertTrue(userData.rawJson().contains("user_123"));
     }
 
     @Test

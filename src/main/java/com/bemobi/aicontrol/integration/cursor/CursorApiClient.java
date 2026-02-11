@@ -6,6 +6,8 @@ import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.cursor.dto.CursorTeamMember;
 import com.bemobi.aicontrol.integration.cursor.dto.CursorTeamMembersResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -41,10 +43,13 @@ public class CursorApiClient implements ToolApiClient {
 
     private final WebClient webClient;
     private final CursorApiProperties properties;
+    private final ObjectMapper objectMapper;
 
     public CursorApiClient(WebClient.Builder webClientBuilder,
-                          CursorApiProperties properties) {
+                          CursorApiProperties properties,
+                          ObjectMapper objectMapper) {
         this.properties = properties;
+        this.objectMapper = objectMapper;
 
         // Only create WebClient if properties are configured
         String baseUrl = properties.getBaseUrl() != null ? properties.getBaseUrl() : "https://api.cursor.com";
@@ -129,8 +134,17 @@ public class CursorApiClient implements ToolApiClient {
                 "active",
                 null,
                 metrics,
-                null
+                toRawJson(member)
         );
+    }
+
+    private String toRawJson(Object dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize rawJson", e);
+            return null;
+        }
     }
 
     private Mono<? extends Throwable> handle4xxError(ClientResponse response) {
