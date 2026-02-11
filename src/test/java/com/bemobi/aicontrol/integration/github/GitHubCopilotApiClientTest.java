@@ -7,6 +7,8 @@ import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeat;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeatsResponse;
 import com.bemobi.aicontrol.integration.github.dto.GitHubUser;
 import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,8 +70,10 @@ class GitHubCopilotApiClientTest {
         when(webClientBuilder.defaultHeader(anyString(), anyString())).thenReturn(webClientBuilder);
         when(webClientBuilder.build()).thenReturn(webClient);
 
-        client = new GitHubCopilotApiClient(webClientBuilder, properties, workspaceClient);
-        clientWithoutWorkspace = new GitHubCopilotApiClient(webClientBuilder, properties, null);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        client = new GitHubCopilotApiClient(webClientBuilder, properties, workspaceClient, objectMapper);
+        clientWithoutWorkspace = new GitHubCopilotApiClient(webClientBuilder, properties, null, objectMapper);
     }
 
     @Test
@@ -128,6 +132,9 @@ class GitHubCopilotApiClientTest {
         assertEquals("testuser", userData.additionalMetrics().get("github_login"));
         assertEquals(123L, userData.additionalMetrics().get("github_id"));
         assertEquals("workspace", userData.additionalMetrics().get("email_type"));
+        assertNotNull(userData.rawJson());
+        assertTrue(userData.rawJson().contains("vscode"));
+        assertTrue(userData.rawJson().contains("testuser"));
     }
 
     @Test

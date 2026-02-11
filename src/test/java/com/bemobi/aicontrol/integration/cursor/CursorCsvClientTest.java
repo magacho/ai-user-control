@@ -3,6 +3,7 @@ package com.bemobi.aicontrol.integration.cursor;
 import com.bemobi.aicontrol.integration.common.ApiClientException;
 import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +38,8 @@ class CursorCsvClientTest {
     void setUp() {
         when(properties.isEnabled()).thenReturn(true);
 
-        client = new CursorCsvClient(properties);
+        ObjectMapper objectMapper = new ObjectMapper();
+        client = new CursorCsvClient(properties, objectMapper);
     }
 
     @Test
@@ -92,6 +94,11 @@ class CursorCsvClientTest {
         assertEquals("user2@example.com", user2.email());
         assertEquals("User Two", user2.name());
         assertEquals("inactive", user2.status());
+
+        // Verify rawJson contains CSV data as JSON
+        assertNotNull(user1.rawJson());
+        assertTrue(user1.rawJson().contains("test@example.com"));
+        assertTrue(user1.rawJson().contains("Test User"));
     }
 
     @Test

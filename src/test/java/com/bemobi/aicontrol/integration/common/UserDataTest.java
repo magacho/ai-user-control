@@ -56,6 +56,25 @@ class UserDataTest {
     }
 
     @Test
+    void testAdditionalMetricsIsImmutableWhenProvided() {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("role", "admin");
+
+        UserData userData = new UserData(null, null, null, null, metrics, null);
+
+        assertThrows(UnsupportedOperationException.class, () ->
+                userData.additionalMetrics().put("new_key", "value"));
+    }
+
+    @Test
+    void testAdditionalMetricsIsImmutableWhenNull() {
+        UserData userData = new UserData(null, null, null, null, null, null);
+
+        assertThrows(UnsupportedOperationException.class, () ->
+                userData.additionalMetrics().put("key", "value"));
+    }
+
+    @Test
     void testToString() {
         UserData userData = new UserData("test@example.com", "Test User", "active", null, null, null);
 

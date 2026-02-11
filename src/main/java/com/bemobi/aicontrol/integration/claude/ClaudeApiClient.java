@@ -6,6 +6,8 @@ import com.bemobi.aicontrol.integration.claude.dto.ClaudeMembersResponse;
 import com.bemobi.aicontrol.integration.common.ApiClientException;
 import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -40,10 +42,13 @@ public class ClaudeApiClient implements ToolApiClient {
 
     private final WebClient webClient;
     private final ClaudeApiProperties properties;
+    private final ObjectMapper objectMapper;
 
     public ClaudeApiClient(WebClient.Builder webClientBuilder,
-                          ClaudeApiProperties properties) {
+                          ClaudeApiProperties properties,
+                          ObjectMapper objectMapper) {
         this.properties = properties;
+        this.objectMapper = objectMapper;
 
         // Only create WebClient if properties are configured
         String baseUrl = properties.getBaseUrl() != null ? properties.getBaseUrl() : "https://api.anthropic.com";
@@ -130,8 +135,17 @@ public class ClaudeApiClient implements ToolApiClient {
                 member.status(),
                 member.lastActiveAt(),
                 metrics,
-                null
+                toRawJson(member)
         );
+    }
+
+    private String toRawJson(Object dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize rawJson", e);
+            return null;
+        }
     }
 
     private Mono<? extends Throwable> handle4xxError(ClientResponse response) {

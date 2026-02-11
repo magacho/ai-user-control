@@ -4,6 +4,8 @@ import com.bemobi.aicontrol.integration.ToolApiClient;
 import com.bemobi.aicontrol.integration.common.ApiClientException;
 import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -39,9 +41,12 @@ public class CursorCsvClient implements ToolApiClient {
     private static final Logger log = LoggerFactory.getLogger(CursorCsvClient.class);
 
     private final CursorApiProperties properties;
+    private final ObjectMapper objectMapper;
 
-    public CursorCsvClient(CursorApiProperties properties) {
+    public CursorCsvClient(CursorApiProperties properties,
+                           ObjectMapper objectMapper) {
         this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -196,7 +201,17 @@ public class CursorCsvClient implements ToolApiClient {
                 resolvedStatus,
                 lastActivityAt,
                 metrics,
-                null
+                csvRecordToJson(record)
         );
+    }
+
+    private String csvRecordToJson(CSVRecord record) {
+        try {
+            Map<String, String> map = record.toMap();
+            return objectMapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize CSV record to JSON", e);
+            return null;
+        }
     }
 }

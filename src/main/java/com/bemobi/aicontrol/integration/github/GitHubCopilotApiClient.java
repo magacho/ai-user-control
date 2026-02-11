@@ -8,6 +8,8 @@ import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeat;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeatsResponse;
 import com.bemobi.aicontrol.integration.github.dto.GitHubUser;
 import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,12 +46,15 @@ public class GitHubCopilotApiClient implements ToolApiClient {
     private final WebClient webClient;
     private final GitHubApiProperties properties;
     private final GoogleWorkspaceClient workspaceClient;
+    private final ObjectMapper objectMapper;
 
     public GitHubCopilotApiClient(WebClient.Builder webClientBuilder,
                                  GitHubApiProperties properties,
-                                 @Autowired(required = false) GoogleWorkspaceClient workspaceClient) {
+                                 @Autowired(required = false) GoogleWorkspaceClient workspaceClient,
+                                 ObjectMapper objectMapper) {
         this.properties = properties;
         this.workspaceClient = workspaceClient;
+        this.objectMapper = objectMapper;
 
         // Only create WebClient if properties are configured
         String baseUrl = properties.getBaseUrl() != null ? properties.getBaseUrl() : "https://api.github.com";
@@ -188,8 +193,17 @@ public class GitHubCopilotApiClient implements ToolApiClient {
                 "active",
                 seat.lastActivityAt() != null ? seat.lastActivityAt().toLocalDateTime() : null,
                 metrics,
-                null
+                toRawJson(seat)
         );
+    }
+
+    private String toRawJson(Object dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize rawJson", e);
+            return null;
+        }
     }
 
     /**
