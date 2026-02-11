@@ -6,12 +6,12 @@ Este diretório contém as decisões arquiteturais importantes do projeto AI Use
 
 ### Core Architecture
 
-| ADR | Título | Status | Data |
+| ADR | Titulo | Status | Data |
 |-----|--------|--------|------|
 | [ADR-001](ADR-001-framework-spring-boot.md) | Escolha do Spring Boot como Framework Base | ✅ Accepted | 2026-01-22 |
-| [ADR-002](ADR-002-database-sqlite.md) | Escolha do SQLite como Banco de Dados | ✅ Accepted | 2026-01-22 |
-| [ADR-003](ADR-003-layered-architecture.md) | Arquitetura em Camadas (Layered Architecture) | ✅ Accepted | 2026-01-22 |
-| [ADR-004](ADR-004-api-integration-pattern.md) | Padrão de Integração com APIs Externas | ✅ Accepted | 2026-01-22 |
+| [ADR-002](ADR-002-database-sqlite.md) | Escolha do SQLite como Banco de Dados | ⚠️ Superseded | 2026-01-22 |
+| [ADR-003](ADR-003-layered-architecture.md) | Arquitetura em Camadas (Layered Architecture) | ⚠️ Superseded | 2026-01-22 |
+| [ADR-004](ADR-004-api-integration-pattern.md) | Padrao de Integracao com APIs Externas | ✅ Accepted | 2026-01-22 |
 
 ## Mapa de Dependências
 
@@ -25,38 +25,35 @@ graph LR
 
 ## Visão Geral das Decisões
 
-### Stack Tecnológica
+### Stack Tecnologica
 
-**Framework:** Spring Boot 3.2.x
-**Linguagem:** Java 17 LTS
-**Banco de Dados:** SQLite
+**Framework:** Spring Boot 3.5.10
+**Linguagem:** Java 21 LTS
 **Build Tool:** Maven
-**CLI Framework:** Spring Shell
+**CLI Framework:** Spring Shell (modo nao-interativo)
 **HTTP Client:** Spring WebClient
+**Exportacao:** Apache Commons CSV
 
-### Padrões Arquiteturais
+### Padroes Arquiteturais
 
-**Arquitetura:** Layered Architecture (6 camadas)
-- Presentation (CLI Commands)
-- Service (Business Logic)
-- Repository (Data Access)
-- Integration (External APIs)
-- Entity (Domain Models)
-- Configuration (Spring Config)
+**Arquitetura:** 3 camadas (Integration -> Service -> Runner)
+- **Integration:** API Clients (Claude, GitHub, Cursor, Google Workspace)
+- **Service:** Logica de negocio (coleta, unificacao, exportacao CSV)
+- **Runner:** CommandLineRunner para execucao automatizada
 
-**Integração APIs:** Strategy Pattern
+**Integracao APIs:** Strategy Pattern
 - Interface comum: `ToolApiClient`
-- Implementações específicas por ferramenta
+- Implementacoes especificas por ferramenta
 - Retry com exponential backoff
 - Conditional bean loading
 
-### Princípios de Design
+### Principios de Design
 
-- ✅ **Separation of Concerns:** Cada camada tem responsabilidade única
-- ✅ **Dependency Inversion:** Dependências via interfaces
+- ✅ **Separation of Concerns:** Cada camada tem responsabilidade unica
+- ✅ **Dependency Inversion:** Dependencias via interfaces
 - ✅ **Single Responsibility:** Classes focadas e coesas
-- ✅ **Open/Closed:** Extensível sem modificar código existente
-- ✅ **Testability:** Todas as camadas testáveis isoladamente
+- ✅ **Open/Closed:** Extensivel sem modificar codigo existente (Strategy Pattern)
+- ✅ **Testability:** 107+ testes unitarios com cobertura >80%
 
 ## Como Usar Este Diretório
 
@@ -120,10 +117,15 @@ Cada ADR segue a estrutura:
 - **Deprecated:** Decisão obsoleta mas mantida para histórico
 - **Superseded:** Substituída por outro ADR
 
-## Atualizações
+## Atualizacoes
+
+### 2026-02-10
+- ⚠️ ADR-002 (SQLite) marcado como Superseded — projeto usa exportacao CSV sem banco
+- ⚠️ ADR-003 (6 camadas) marcado como Superseded — arquitetura atual usa 3 camadas
+- ✅ ADR-001 atualizado para Java 21 / Spring Boot 3.5.10
 
 ### 2026-01-22
-- ✅ Criados ADRs 001 a 004 (decisões core)
+- ✅ Criados ADRs 001 a 004 (decisoes core)
 - ✅ Estabelecida arquitetura base do projeto
 - ✅ Definidas tecnologias principais
 
@@ -136,4 +138,4 @@ Cada ADR segue a estrutura:
 ---
 
 > *Mantido por: @Architect*
-> *Última atualização: 2026-01-22*
+> *Ultima atualizacao: 2026-02-10*

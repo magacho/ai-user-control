@@ -1,8 +1,10 @@
 # ADR-002: Escolha do SQLite como Banco de Dados
 
-**Status:** Accepted
+**Status:** Superseded
 **Date:** 2026-01-22
 **Deciders:** @Architect, @Dev, @DevOps
+
+> **Nota:** Decisao substituida — o projeto evoluiu para exportacao CSV sem persistencia em banco de dados. Os dados sao coletados das APIs e exportados diretamente para arquivos CSV, sem necessidade de banco de dados local.
 
 ## Context
 

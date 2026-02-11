@@ -19,27 +19,26 @@ O projeto AI User Control necessita de um framework robusto para implementar uma
 
 ## Decision
 
-**Escolhemos Spring Boot 3.2.x com Java 17 LTS como framework base do projeto.**
+**Escolhemos Spring Boot 3.5.10 com Java 21 LTS como framework base do projeto.**
 
 ### Componentes Principais
 - **Spring Boot Starter** - Core framework
-- **Spring Data JPA** - Persistência e ORM
-- **Spring Shell** - Interface CLI
+- **Spring Shell** - Interface CLI (modo nao-interativo)
 - **Spring WebFlux** - Cliente HTTP reativo (WebClient)
-- **Spring Boot Actuator** - Métricas e health checks (opcional)
+- **Apache Commons CSV** - Exportacao de dados
 
-### Configuração
+### Configuracao
 ```yaml
 spring:
   application:
     name: ai-user-control
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-  flyway:
-    enabled: true
+  main:
+    web-application-type: none
+  shell:
+    interactive:
+      enabled: false
+    noninteractive:
+      enabled: true
 ```
 
 ## Consequences
@@ -47,14 +46,12 @@ spring:
 ### Positive
 - ✅ **Ecossistema Maduro:** Spring Boot é amplamente adotado com vasta documentação
 - ✅ **Injeção de Dependências:** Gerenciamento automático de beans e dependências
-- ✅ **Spring Data JPA:** Reduz código boilerplate para acesso a dados
-- ✅ **Spring Shell:** CLI interativa nativa com autocomplete e histórico
+- ✅ **Spring Shell:** CLI nao-interativa para execucao automatizada
 - ✅ **Configuração Centralizada:** `application.yml` + profiles + `@ConfigurationProperties`
 - ✅ **Testing Framework:** Suporte completo a testes unitários e de integração
 - ✅ **Observabilidade:** Actuator fornece métricas e health checks prontos
 - ✅ **WebClient Reativo:** Cliente HTTP moderno com retry e backoff
-- ✅ **Flyway Integration:** Migrations de banco de dados automatizadas
-- ✅ **Comunidade Ativa:** Fácil encontrar soluções e boas práticas
+- ✅ **Comunidade Ativa:** Facil encontrar solucoes e boas praticas
 
 ### Negative
 - ⚠️ **Tamanho do JAR:** Spring Boot gera JARs maiores (~40-60MB)
@@ -100,17 +97,18 @@ ai-user-control/
 ├── src/main/
 │   ├── java/com/bemobi/aicontrol/
 │   │   ├── AiUserControlApplication.java    # @SpringBootApplication
-│   │   ├── command/                          # @ShellComponent
-│   │   ├── service/                          # @Service
-│   │   ├── repository/                       # @Repository
-│   │   ├── entity/                           # @Entity
-│   │   ├── client/                           # API Clients
-│   │   ├── config/                           # @Configuration
-│   │   └── dto/                              # DTOs
+│   │   ├── config/                          # @Configuration
+│   │   ├── integration/                     # API Clients (Strategy Pattern)
+│   │   │   ├── ToolApiClient.java           # Interface base
+│   │   │   ├── common/                      # DTOs comuns (UserData, etc.)
+│   │   │   ├── claude/                      # Anthropic Admin API
+│   │   │   ├── github/                      # GitHub Copilot API
+│   │   │   ├── cursor/                      # Cursor Admin API + CSV
+│   │   │   └── google/                      # Google Workspace (email)
+│   │   ├── service/                         # @Service (logica de negocio)
+│   │   └── runner/                          # CommandLineRunner
 │   └── resources/
-│       ├── application.yml
-│       ├── application-prod.yml
-│       └── db/migration/                     # Flyway
+│       └── application.yml
 ```
 
 ### Application Main Class
@@ -139,25 +137,19 @@ public class AiControlProperties {
 }
 ```
 
-### Build e Execução
+### Build e Execucao
 ```bash
 # Build
-mvn clean package
+mvn clean install
 
-# Executar
-java -jar target/ai-user-control-0.0.1.jar
-
-# Modo interativo
-java -jar ai-user-control.jar
-
-# Modo comando único
-java -jar ai-user-control.jar collect --all
+# Executar (coleta e exporta CSVs automaticamente)
+mvn spring-boot:run
 ```
 
 ## Related ADRs
-- ADR-002: Escolha do Banco de Dados (SQLite)
-- ADR-003: Arquitetura em Camadas
-- ADR-004: Padrão de Integração com APIs Externas
+- ADR-002: Escolha do Banco de Dados (SQLite) — **Superseded**
+- ADR-003: Arquitetura em Camadas — **Superseded**
+- ADR-004: Padrao de Integracao com APIs Externas
 
 ## References
 - Spring Boot Documentation: https://spring.io/projects/spring-boot

@@ -1,8 +1,10 @@
 # ADR-003: Arquitetura em Camadas (Layered Architecture)
 
-**Status:** Accepted
+**Status:** Superseded
 **Date:** 2026-01-22
 **Deciders:** @Architect, @Dev
+
+> **Nota:** Decisao substituida — a arquitetura atual usa 3 camadas (Integration -> Service -> Runner) sem Repository, Entity ou CLI layers. O projeto nao usa banco de dados nem Spring Shell interativo.
 
 ## Context
 
