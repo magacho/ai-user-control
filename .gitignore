@@ -46,3 +46,4 @@ Thumbs.db
 *.exec
 jacoco.exec
 output/
+/google-workspace-key.json
