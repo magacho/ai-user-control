@@ -6,6 +6,8 @@ import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.cursor.dto.CursorTeamMember;
 import com.bemobi.aicontrol.integration.cursor.dto.CursorTeamMembersResponse;
+import com.bemobi.aicontrol.integration.cursor.dto.DailyUsageResponse;
+import com.bemobi.aicontrol.integration.cursor.dto.SpendingDataResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -161,5 +163,82 @@ public class CursorApiClient implements ToolApiClient {
                 log.error("5xx error from Cursor Admin API: {} - {}", response.statusCode(), body);
                 return Mono.error(new ApiClientException("Server error: " + body));
             });
+    }
+
+    /**
+     * Fetch spending data from Cursor Admin API.
+     *
+     * <p>Retrieves spending information for all team members.</p>
+     *
+     * @return spending data response containing per-user spending information
+     * @throws ApiClientException if the API request fails
+     */
+    public SpendingDataResponse fetchSpendingData() throws ApiClientException {
+        log.info("Fetching spending data from Cursor Admin API");
+
+        try {
+            SpendingDataResponse response = webClient.get()
+                .uri("/teams/spending-data")
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(SpendingDataResponse.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
+                    .doBeforeRetry(signal ->
+                        log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (response == null || response.data() == null) {
+                throw new ApiClientException("Empty response from Cursor Admin API (spending-data)");
+            }
+
+            log.info("Successfully fetched spending data for {} users from Cursor", response.data().size());
+
+            return response;
+
+        } catch (WebClientException e) {
+            log.error("Error fetching spending data from Cursor: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch spending data from Cursor", e);
+        }
+    }
+
+    /**
+     * Fetch daily usage data from Cursor Admin API.
+     *
+     * <p>Retrieves daily usage metrics for all team members, including token usage,
+     * lines added/deleted, acceptance rates, and model usage statistics.</p>
+     *
+     * @return daily usage response containing per-user daily metrics
+     * @throws ApiClientException if the API request fails
+     */
+    public DailyUsageResponse fetchDailyUsage() throws ApiClientException {
+        log.info("Fetching daily usage data from Cursor Admin API");
+
+        try {
+            DailyUsageResponse response = webClient.get()
+                .uri("/teams/daily-usage-data")
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(DailyUsageResponse.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
+                    .doBeforeRetry(signal ->
+                        log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (response == null || response.data() == null) {
+                throw new ApiClientException("Empty response from Cursor Admin API (daily-usage-data)");
+            }
+
+            log.info("Successfully fetched daily usage data for {} records from Cursor", response.data().size());
+
+            return response;
+
+        } catch (WebClientException e) {
+            log.error("Error fetching daily usage data from Cursor: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch daily usage data from Cursor", e);
+        }
     }
 }
