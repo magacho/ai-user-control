@@ -7,6 +7,8 @@ import com.bemobi.aicontrol.integration.common.UserData;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeat;
 import com.bemobi.aicontrol.integration.github.dto.GitHubCopilotSeatsResponse;
 import com.bemobi.aicontrol.integration.github.dto.GitHubUser;
+import com.bemobi.aicontrol.integration.github.dto.UserMetric;
+import com.bemobi.aicontrol.integration.github.dto.UserMetricsResponse;
 import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +25,12 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
+import java.io.BufferedReader;
+import java.io.StringReader;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -255,5 +262,110 @@ public class GitHubCopilotApiClient implements ToolApiClient {
                 log.error("5xx error from GitHub API: {} - {}", response.statusCode(), body);
                 return Mono.error(new ApiClientException("Server error: " + body));
             });
+    }
+
+    /**
+     * Fetches user metrics for a specific date from the GitHub Copilot Metrics API.
+     *
+     * <p>This method uses the new Metrics API endpoint:
+     * GET /orgs/{org}/copilot/metrics/reports/users-1-day?date=YYYY-MM-DD</p>
+     *
+     * <p>The API returns a signed URL that must be accessed to download the actual
+     * metrics data in NDJSON format (one JSON object per line, one per user).</p>
+     *
+     * @param date the date for which to fetch metrics (YYYY-MM-DD format)
+     * @return UserMetricsResponse containing the parsed metrics data
+     * @throws ApiClientException if the API call fails or parsing fails
+     */
+    public UserMetricsResponse fetchUserMetrics(LocalDate date) throws ApiClientException {
+        log.info("Fetching user metrics from GitHub Copilot API for date: {}", date);
+
+        String dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        try {
+            // Step 1: Get the signed URL from the metrics API
+            Map<String, Object> initialResponse = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/orgs/{org}/copilot/metrics/reports/users-1-day")
+                    .queryParam("date", dateStr)
+                    .build(properties.getOrganization()))
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(Map.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException &&
+                           ((WebClientResponseException) throwable).getStatusCode().is5xxServerError())
+                    .doBeforeRetry(signal ->
+                        log.warn("Server error, retrying metrics request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (initialResponse == null) {
+                log.warn("Empty response from GitHub Copilot Metrics API");
+                return new UserMetricsResponse(null, null, Collections.emptyList());
+            }
+
+            String reportUrl = (String) initialResponse.get("report_url");
+            String expiresAt = (String) initialResponse.get("expires_at");
+
+            if (reportUrl == null || reportUrl.isEmpty()) {
+                log.warn("No report URL in metrics API response");
+                return new UserMetricsResponse(reportUrl, expiresAt, Collections.emptyList());
+            }
+
+            log.debug("Fetching metrics data from signed URL: {}", reportUrl);
+
+            // Step 2: Download NDJSON data from the signed URL
+            String ndjsonData = WebClient.create()
+                .get()
+                .uri(reportUrl)
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(String.class)
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (ndjsonData == null || ndjsonData.isEmpty()) {
+                log.warn("Empty NDJSON data from signed URL");
+                return new UserMetricsResponse(reportUrl, expiresAt, Collections.emptyList());
+            }
+
+            // Step 3: Parse NDJSON (one JSON object per line)
+            List<UserMetric> metrics = parseNdjson(ndjsonData);
+            log.info("Successfully parsed {} user metrics for date {}", metrics.size(), date);
+
+            return new UserMetricsResponse(reportUrl, expiresAt, metrics);
+
+        } catch (WebClientResponseException.NotFound e) {
+            log.warn("Metrics not found for organization '{}' on date {}", properties.getOrganization(), date);
+            return new UserMetricsResponse(null, null, Collections.emptyList());
+        } catch (WebClientException e) {
+            log.error("Error fetching user metrics from GitHub Copilot: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch user metrics from GitHub Copilot", e);
+        } catch (Exception e) {
+            log.error("Error parsing metrics data: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to parse metrics data", e);
+        }
+    }
+
+    /**
+     * Parses NDJSON (Newline Delimited JSON) into a list of UserMetric objects.
+     *
+     * @param ndjson the NDJSON string to parse
+     * @return list of parsed UserMetric objects
+     * @throws Exception if parsing fails
+     */
+    private List<UserMetric> parseNdjson(String ndjson) throws Exception {
+        List<UserMetric> metrics = new ArrayList<>();
+        BufferedReader reader = new BufferedReader(new StringReader(ndjson));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+            if (!line.isEmpty()) {
+                UserMetric metric = objectMapper.readValue(line, UserMetric.class);
+                metrics.add(metric);
+            }
+        }
+        return metrics;
     }
 }
