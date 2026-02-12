@@ -3,6 +3,8 @@ package com.bemobi.aicontrol.integration.claude;
 import com.bemobi.aicontrol.integration.ToolApiClient;
 import com.bemobi.aicontrol.integration.claude.dto.ClaudeMember;
 import com.bemobi.aicontrol.integration.claude.dto.ClaudeMembersResponse;
+import com.bemobi.aicontrol.integration.claude.dto.CostReportResponse;
+import com.bemobi.aicontrol.integration.claude.dto.UsageReportResponse;
 import com.bemobi.aicontrol.integration.common.ApiClientException;
 import com.bemobi.aicontrol.integration.common.ConnectionTestResult;
 import com.bemobi.aicontrol.integration.common.UserData;
@@ -21,6 +23,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +124,97 @@ public class ClaudeApiClient implements ToolApiClient {
     @Override
     public boolean isEnabled() {
         return properties.isEnabled();
+    }
+
+    /**
+     * Fetches usage report from Claude Admin API.
+     *
+     * @param startDate start date (inclusive)
+     * @param endDate end date (inclusive)
+     * @param bucketWidth aggregation bucket width (e.g., "1h", "1d")
+     * @return usage report response with aggregated token usage data
+     * @throws ApiClientException if API call fails
+     */
+    public UsageReportResponse fetchUsageReport(LocalDate startDate, LocalDate endDate, String bucketWidth)
+            throws ApiClientException {
+        log.info("Fetching usage report from Claude API: {} to {}, bucket: {}",
+                startDate, endDate, bucketWidth);
+
+        try {
+            UsageReportResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/v1/organizations/usage_report/messages")
+                    .queryParam("start_date", startDate.toString())
+                    .queryParam("end_date", endDate.toString())
+                    .queryParam("bucket_width", bucketWidth)
+                    .build())
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(UsageReportResponse.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
+                    .doBeforeRetry(signal ->
+                        log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (response == null) {
+                throw new ApiClientException("Empty response from Claude usage report API");
+            }
+
+            log.info("Successfully fetched usage report with {} data points",
+                    response.data() != null ? response.data().size() : 0);
+
+            return response;
+
+        } catch (WebClientException e) {
+            log.error("Error fetching usage report from Claude: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch usage report from Claude", e);
+        }
+    }
+
+    /**
+     * Fetches cost report from Claude Admin API.
+     *
+     * @param startDate start date (inclusive)
+     * @param endDate end date (inclusive)
+     * @return cost report response with spending data in cents
+     * @throws ApiClientException if API call fails
+     */
+    public CostReportResponse fetchCostReport(LocalDate startDate, LocalDate endDate)
+            throws ApiClientException {
+        log.info("Fetching cost report from Claude API: {} to {}", startDate, endDate);
+
+        try {
+            CostReportResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/v1/organizations/cost_report")
+                    .queryParam("start_date", startDate.toString())
+                    .queryParam("end_date", endDate.toString())
+                    .build())
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(CostReportResponse.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
+                    .doBeforeRetry(signal ->
+                        log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (response == null) {
+                throw new ApiClientException("Empty response from Claude cost report API");
+            }
+
+            log.info("Successfully fetched cost report with {} data points",
+                    response.data() != null ? response.data().size() : 0);
+
+            return response;
+
+        } catch (WebClientException e) {
+            log.error("Error fetching cost report from Claude: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch cost report from Claude", e);
+        }
     }
 
     private UserData mapToUserData(ClaudeMember member) {
