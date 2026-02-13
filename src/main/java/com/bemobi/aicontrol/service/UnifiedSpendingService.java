@@ -59,7 +59,8 @@ public class UnifiedSpendingService {
     // Sheet 3: Multi-Tool Users
     private static final String[] MULTI_TOOL_HEADERS = {
         "Email", "Ferramentas", "Quantidade",
-        "Usa Claude", "Usa GitHub Copilot", "Usa Cursor"
+        "Usa Claude", "Usa GitHub Copilot", "Usa Cursor",
+        "Tokens Total", "Linhas Sugeridas", "Linhas Aceitas", "Custo Total (USD)"
     };
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
@@ -171,7 +172,7 @@ public class UnifiedSpendingService {
             buildGitHubUnregisteredRows(report.usageRecords());
 
         List<MultiToolUserRow> multiToolRows =
-            buildMultiToolUserRows(report.usageRecords());
+            buildMultiToolUserRows(report.usageRecords(), report.spendingRecords());
 
         writeXlsxFile(outputPath, usageRows, githubUnregisteredRows, multiToolRows);
 
@@ -322,8 +323,8 @@ public class UnifiedSpendingService {
             ));
         }
 
-        // Sort by email then tool
-        rows.sort(Comparator.comparing(UserUsageRow::email)
+        // Sort by email then tool (handle nulls)
+        rows.sort(Comparator.comparing(UserUsageRow::email, Comparator.nullsLast(String::compareTo))
             .thenComparing(r -> r.tool().getId()));
 
         return rows;
@@ -399,15 +400,33 @@ public class UnifiedSpendingService {
 
     /**
      * Builds multi-tool user rows for Sheet 3.
-     * Only includes users using 2 or more tools.
+     * Only includes users using 2 or more tools with aggregated metrics.
      */
-    private List<MultiToolUserRow> buildMultiToolUserRows(List<UnifiedUsageRecord> usageRecords) {
+    private List<MultiToolUserRow> buildMultiToolUserRows(
+            List<UnifiedUsageRecord> usageRecords,
+            List<UnifiedSpendingRecord> spendingRecords) {
+
+        // Group tools by user
         Map<String, Set<ToolType>> userTools = new HashMap<>();
+        Map<String, List<UnifiedUsageRecord>> userRecords = new HashMap<>();
 
         for (UnifiedUsageRecord record : usageRecords) {
             userTools.computeIfAbsent(record.email(), k -> new HashSet<>())
                 .add(record.tool());
+            userRecords.computeIfAbsent(record.email(), k -> new ArrayList<>())
+                .add(record);
         }
+
+        // Group spending by user
+        Map<String, BigDecimal> userCosts = spendingRecords.stream()
+            .collect(Collectors.groupingBy(
+                UnifiedSpendingRecord::email,
+                Collectors.reducing(
+                    BigDecimal.ZERO,
+                    UnifiedSpendingRecord::costUsd,
+                    BigDecimal::add
+                )
+            ));
 
         List<MultiToolUserRow> rows = new ArrayList<>();
 
@@ -415,13 +434,50 @@ public class UnifiedSpendingService {
             Set<ToolType> tools = entry.getValue();
 
             if (tools.size() > 1) {
+                String email = entry.getKey();
+                List<UnifiedUsageRecord> records = userRecords.get(email);
+
+                // Aggregate metrics across all tools
+                Long totalInputTokens = records.stream()
+                    .map(UnifiedUsageRecord::inputTokens)
+                    .filter(Objects::nonNull)
+                    .reduce(0L, Long::sum);
+
+                Long totalOutputTokens = records.stream()
+                    .map(UnifiedUsageRecord::outputTokens)
+                    .filter(Objects::nonNull)
+                    .reduce(0L, Long::sum);
+
+                Long totalCacheTokens = records.stream()
+                    .map(UnifiedUsageRecord::cacheReadTokens)
+                    .filter(Objects::nonNull)
+                    .reduce(0L, Long::sum);
+
+                Long totalTokens = totalInputTokens + totalOutputTokens + totalCacheTokens;
+
+                Integer linesSuggested = records.stream()
+                    .map(UnifiedUsageRecord::linesSuggested)
+                    .filter(Objects::nonNull)
+                    .reduce(0, Integer::sum);
+
+                Integer linesAccepted = records.stream()
+                    .map(UnifiedUsageRecord::linesAccepted)
+                    .filter(Objects::nonNull)
+                    .reduce(0, Integer::sum);
+
+                BigDecimal totalCost = userCosts.getOrDefault(email, BigDecimal.ZERO);
+
                 rows.add(new MultiToolUserRow(
-                    entry.getKey(),
+                    email,
                     tools,
                     tools.size(),
                     tools.contains(ToolType.CLAUDE),
                     tools.contains(ToolType.GITHUB_COPILOT),
-                    tools.contains(ToolType.CURSOR)
+                    tools.contains(ToolType.CURSOR),
+                    totalTokens > 0 ? totalTokens : null,
+                    linesSuggested > 0 ? linesSuggested : null,
+                    linesAccepted > 0 ? linesAccepted : null,
+                    totalCost.compareTo(BigDecimal.ZERO) > 0 ? totalCost : null
                 ));
             }
         }
@@ -538,6 +594,7 @@ public class UnifiedSpendingService {
 
         CellStyle headerStyle = createHeaderStyle(workbook);
         CellStyle numberStyle = createNumberStyle(workbook);
+        CellStyle currencyStyle = createCurrencyStyle(workbook);
 
         // Write headers
         Row headerRow = sheet.createRow(0);
@@ -564,6 +621,10 @@ public class UnifiedSpendingService {
             createCell(dataRow, 3, row.usesClaude() ? "Sim" : "Não", null);
             createCell(dataRow, 4, row.usesGitHub() ? "Sim" : "Não", null);
             createCell(dataRow, 5, row.usesCursor() ? "Sim" : "Não", null);
+            createCell(dataRow, 6, row.totalTokens(), numberStyle);
+            createCell(dataRow, 7, row.linesSuggested(), numberStyle);
+            createCell(dataRow, 8, row.linesAccepted(), numberStyle);
+            createCell(dataRow, 9, row.totalCost(), currencyStyle);
         }
 
         // Auto-size columns
