@@ -7,8 +7,10 @@ import com.bemobi.aicontrol.integration.common.UnifiedUsageRecord;
 import com.bemobi.aicontrol.integration.common.UsageDataCollector;
 import com.bemobi.aicontrol.integration.github.dto.UserMetric;
 import com.bemobi.aicontrol.integration.github.dto.UserMetricsResponse;
+import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Collector for GitHub Copilot usage data.
@@ -36,9 +39,13 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
     private static final Logger log = LoggerFactory.getLogger(GitHubCopilotUsageDataCollector.class);
 
     private final GitHubCopilotApiClient apiClient;
+    private final GoogleWorkspaceClient workspaceClient;
 
-    public GitHubCopilotUsageDataCollector(GitHubCopilotApiClient apiClient) {
+    public GitHubCopilotUsageDataCollector(
+            GitHubCopilotApiClient apiClient,
+            @Autowired(required = false) GoogleWorkspaceClient workspaceClient) {
         this.apiClient = apiClient;
+        this.workspaceClient = workspaceClient;
     }
 
     @Override
@@ -71,8 +78,86 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
             currentDate = currentDate.plusDays(1);
         }
 
+        // If no metrics data was found, fallback to seats data as a snapshot
+        if (allRecords.isEmpty()) {
+            log.info("No metrics data available for period, falling back to Copilot seats snapshot");
+            allRecords = collectDataFromSeats(endDate);
+        }
+
         log.info("Total GitHub Copilot usage records collected: {}", allRecords.size());
         return allRecords;
+    }
+
+    /**
+     * Collects data from GitHub Copilot seats as a fallback when metrics are not available.
+     * Creates a snapshot of active users with their resolved corporate emails.
+     */
+    private List<UnifiedUsageRecord> collectDataFromSeats(LocalDate snapshotDate) throws ApiClientException {
+        log.info("Fetching GitHub Copilot seats for snapshot on {}", snapshotDate);
+
+        List<com.bemobi.aicontrol.integration.common.UserData> seats = apiClient.fetchUsers();
+
+        if (seats.isEmpty()) {
+            log.warn("No GitHub Copilot seats found");
+            return List.of();
+        }
+
+        log.info("Converting {} seats to usage records", seats.size());
+
+        List<UnifiedUsageRecord> records = new ArrayList<>();
+        for (com.bemobi.aicontrol.integration.common.UserData seat : seats) {
+            UnifiedUsageRecord record = convertSeatToUsageRecord(seat, snapshotDate);
+            records.add(record);
+        }
+
+        return records;
+    }
+
+    /**
+     * Converts a Copilot seat (from fetchUsers) to a UnifiedUsageRecord.
+     * This is used as a fallback when metrics API doesn't have data.
+     */
+    private UnifiedUsageRecord convertSeatToUsageRecord(
+            com.bemobi.aicontrol.integration.common.UserData seat,
+            LocalDate date) {
+
+        String email = seat.email();
+
+        // Try to resolve corporate email if not already resolved
+        if (workspaceClient != null && seat.additionalMetrics().containsKey("github_login")) {
+            String githubLogin = (String) seat.additionalMetrics().get("github_login");
+            if (githubLogin != null && !githubLogin.isBlank()) {
+                try {
+                    Optional<String> workspaceEmail = workspaceClient.findEmailByGitName(githubLogin);
+                    if (workspaceEmail.isPresent()) {
+                        email = workspaceEmail.get();
+                        log.debug("Workspace resolved email for seat {}: {}", githubLogin, email);
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to resolve Workspace email for seat {}: {}", githubLogin, e.getMessage());
+                }
+            }
+        }
+
+        // Build raw metadata
+        Map<String, Object> rawMetadata = new HashMap<>();
+        rawMetadata.put("gitHubLogin", seat.additionalMetrics().get("github_login"));
+        rawMetadata.put("source", "seats_snapshot");
+        rawMetadata.put("snapshot_date", date.toString());
+        rawMetadata.putAll(seat.additionalMetrics());
+
+        return new UnifiedUsageRecord(
+                email != null ? email : "[SEM-EMAIL]",
+                ToolType.GITHUB_COPILOT,
+                date,
+                null, // No token data from seats
+                null,
+                null,
+                null, // No lines data from seats
+                null,
+                null, // No acceptance rate from seats
+                rawMetadata
+        );
     }
 
     @Override
@@ -94,12 +179,34 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
      * <p>Note that GitHub Copilot does not expose token counts, so those fields are null.
      * The acceptance rate is calculated from lines of code metrics.</p>
      *
+     * <p>If Google Workspace integration is enabled, attempts to resolve the corporate email
+     * from the GitHub login. If not found, uses the GitHub public email or a placeholder.</p>
+     *
      * @param metric the GitHub Copilot user metric
      * @param date the date for the metric
      * @return unified usage record
      */
     private UnifiedUsageRecord convertToUnifiedUsageRecord(UserMetric metric, LocalDate date) {
-        String email = normalizeEmail(metric.userEmail());
+        String githubLogin = metric.userName();
+        String email = null;
+
+        // Priority 1: Try to resolve corporate email from Google Workspace
+        if (workspaceClient != null && githubLogin != null && !githubLogin.isBlank()) {
+            try {
+                Optional<String> workspaceEmail = workspaceClient.findEmailByGitName(githubLogin);
+                if (workspaceEmail.isPresent()) {
+                    email = workspaceEmail.get();
+                    log.debug("Workspace resolved email for GitHub user {}: {}", githubLogin, email);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to resolve Workspace email for GitHub user {}: {}", githubLogin, e.getMessage());
+            }
+        }
+
+        // Priority 2: Use GitHub public email if Workspace lookup failed
+        if (email == null) {
+            email = normalizeEmail(metric.userEmail());
+        }
 
         // Calculate acceptance rate: locAddedSum / locSuggestedToAddSum
         Double acceptanceRate = calculateAcceptanceRate(
@@ -109,6 +216,7 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
 
         // Build raw metadata with GitHub-specific fields
         Map<String, Object> rawMetadata = new HashMap<>();
+        rawMetadata.put("gitHubLogin", githubLogin); // Used by UnifiedSpendingService for unregistered check
         rawMetadata.put("user_name", metric.userName());
         rawMetadata.put("user_email", metric.userEmail());
         rawMetadata.put("date", metric.date());
