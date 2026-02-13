@@ -153,7 +153,17 @@ public class UnifiedSpendingService {
     }
 
     /**
-     * Exports the consolidated report to an XLSX file with 3 sheets.
+     * Exports the consolidated report to an XLSX file with 6 sheets.
+     *
+     * <p>Sheets:
+     * <ol>
+     *   <li>Volumes de Uso - Consolidated usage by user and tool</li>
+     *   <li>GitHub Não Cadastrados - Unregistered GitHub users</li>
+     *   <li>Usuários Multi-Tool - Users with multiple tools</li>
+     *   <li>Claude - Dados Brutos - Raw Claude records for debugging</li>
+     *   <li>GitHub - Dados Brutos - Raw GitHub Copilot records for debugging</li>
+     *   <li>Cursor - Dados Brutos - Raw Cursor records for debugging</li>
+     * </ol>
      *
      * @param report ConsolidatedReport to export
      * @param outputPath Path where the XLSX file will be saved
@@ -163,6 +173,7 @@ public class UnifiedSpendingService {
     public Path exportToXlsx(ConsolidatedReport report, Path outputPath) throws IOException {
         log.info("Starting XLSX export to {}", outputPath);
 
+        // Consolidated sheets
         List<UserUsageRow> usageRows = buildUserUsageRows(
             report.usageRecords(),
             report.spendingRecords()
@@ -174,10 +185,25 @@ public class UnifiedSpendingService {
         List<MultiToolUserRow> multiToolRows =
             buildMultiToolUserRows(report.usageRecords(), report.spendingRecords());
 
-        writeXlsxFile(outputPath, usageRows, githubUnregisteredRows, multiToolRows);
+        // Raw data sheets (for debugging)
+        List<UnifiedUsageRecord> claudeRawRecords = report.usageRecords().stream()
+            .filter(r -> r.tool() == ToolType.CLAUDE)
+            .toList();
 
-        log.info("XLSX export completed. File: {}, Usage rows: {}, Unregistered: {}, Multi-tool: {}",
-            outputPath, usageRows.size(), githubUnregisteredRows.size(), multiToolRows.size());
+        List<UnifiedUsageRecord> githubRawRecords = report.usageRecords().stream()
+            .filter(r -> r.tool() == ToolType.GITHUB_COPILOT)
+            .toList();
+
+        List<UnifiedUsageRecord> cursorRawRecords = report.usageRecords().stream()
+            .filter(r -> r.tool() == ToolType.CURSOR)
+            .toList();
+
+        writeXlsxFile(outputPath, usageRows, githubUnregisteredRows, multiToolRows,
+            claudeRawRecords, githubRawRecords, cursorRawRecords);
+
+        log.info("XLSX export completed. File: {}, Usage rows: {}, Unregistered: {}, Multi-tool: {}, Raw: Claude={}, GitHub={}, Cursor={}",
+            outputPath, usageRows.size(), githubUnregisteredRows.size(), multiToolRows.size(),
+            claudeRawRecords.size(), githubRawRecords.size(), cursorRawRecords.size());
 
         return outputPath;
     }
@@ -490,23 +516,27 @@ public class UnifiedSpendingService {
     }
 
     /**
-     * Writes the XLSX file with 3 sheets.
+     * Writes the XLSX file with 6 sheets (3 consolidated + 3 raw data for debugging).
      */
     private void writeXlsxFile(
         Path outputPath,
         List<UserUsageRow> usageRows,
         List<GitHubUnregisteredRow> githubRows,
-        List<MultiToolUserRow> multiToolRows
+        List<MultiToolUserRow> multiToolRows,
+        List<UnifiedUsageRecord> claudeRawRecords,
+        List<UnifiedUsageRecord> githubRawRecords,
+        List<UnifiedUsageRecord> cursorRawRecords
     ) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
-            // Sheet 1: Usage Volumes
+            // Consolidated sheets
             writeUsageSheet(workbook, usageRows);
-
-            // Sheet 2: GitHub Unregistered
             writeGitHubUnregisteredSheet(workbook, githubRows);
-
-            // Sheet 3: Multi-Tool Users
             writeMultiToolSheet(workbook, multiToolRows);
+
+            // Raw data sheets (for debugging)
+            writeRawDataSheet(workbook, "Claude - Dados Brutos", claudeRawRecords);
+            writeRawDataSheet(workbook, "GitHub - Dados Brutos", githubRawRecords);
+            writeRawDataSheet(workbook, "Cursor - Dados Brutos", cursorRawRecords);
 
             // Write to file
             try (FileOutputStream fileOut = new FileOutputStream(outputPath.toFile())) {
@@ -629,6 +659,68 @@ public class UnifiedSpendingService {
 
         // Auto-size columns
         for (int i = 0; i < MULTI_TOOL_HEADERS.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
+    }
+
+    /**
+     * Writes a raw data sheet for debugging purposes.
+     * Shows the original data as received from each API.
+     */
+    private void writeRawDataSheet(Workbook workbook, String sheetName, List<UnifiedUsageRecord> records) {
+        Sheet sheet = workbook.createSheet(sheetName);
+
+        CellStyle headerStyle = createHeaderStyle(workbook);
+        CellStyle dateStyle = createDateStyle(workbook);
+        CellStyle numberStyle = createNumberStyle(workbook);
+
+        // Headers
+        String[] headers = {
+            "Email", "Data", "Tokens Entrada", "Tokens Saída", "Tokens Cache",
+            "Linhas Sugeridas", "Linhas Aceitas", "Taxa Aceitação (%)",
+            "GitHub Login", "Metadata"
+        };
+
+        Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        // Write data
+        int rowNum = 1;
+        for (UnifiedUsageRecord record : records) {
+            Row dataRow = sheet.createRow(rowNum++);
+
+            createCell(dataRow, 0, record.email(), null);
+            createCell(dataRow, 1, record.date(), dateStyle);
+            createCell(dataRow, 2, record.inputTokens(), numberStyle);
+            createCell(dataRow, 3, record.outputTokens(), numberStyle);
+            createCell(dataRow, 4, record.cacheReadTokens(), numberStyle);
+            createCell(dataRow, 5, record.linesSuggested(), numberStyle);
+            createCell(dataRow, 6, record.linesAccepted(), numberStyle);
+            createCell(dataRow, 7, record.acceptanceRate(), numberStyle);
+
+            // Extract GitHub login from metadata if available
+            String githubLogin = "";
+            if (record.rawMetadata() != null && record.rawMetadata().containsKey("gitHubLogin")) {
+                githubLogin = String.valueOf(record.rawMetadata().get("gitHubLogin"));
+            }
+            createCell(dataRow, 8, githubLogin, null);
+
+            // Serialize metadata for debugging
+            String metadata = "";
+            if (record.rawMetadata() != null && !record.rawMetadata().isEmpty()) {
+                metadata = record.rawMetadata().entrySet().stream()
+                    .map(e -> e.getKey() + "=" + e.getValue())
+                    .collect(Collectors.joining("; "));
+            }
+            createCell(dataRow, 9, metadata, null);
+        }
+
+        // Auto-size columns
+        for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
     }

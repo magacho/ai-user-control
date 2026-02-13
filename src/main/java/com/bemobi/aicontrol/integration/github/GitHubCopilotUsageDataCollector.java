@@ -116,38 +116,54 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
     /**
      * Converts a Copilot seat (from fetchUsers) to a UnifiedUsageRecord.
      * This is used as a fallback when metrics API doesn't have data.
+     *
+     * <p><strong>Business Rule:</strong> All emails must be @bemobi.com domain.
+     * Always tries to resolve via Workspace first. If not found or if the seat email
+     * is not @bemobi.com, marks as unregistered.</p>
      */
     private UnifiedUsageRecord convertSeatToUsageRecord(
             com.bemobi.aicontrol.integration.common.UserData seat,
             LocalDate date) {
 
-        String email = seat.email();
+        String email = null;
+        String githubLogin = (String) seat.additionalMetrics().get("github_login");
 
-        // Try to resolve corporate email if not already resolved
-        if (workspaceClient != null && seat.additionalMetrics().containsKey("github_login")) {
-            String githubLogin = (String) seat.additionalMetrics().get("github_login");
-            if (githubLogin != null && !githubLogin.isBlank()) {
-                try {
-                    Optional<String> workspaceEmail = workspaceClient.findEmailByGitName(githubLogin);
-                    if (workspaceEmail.isPresent()) {
-                        email = workspaceEmail.get();
-                        log.debug("Workspace resolved email for seat {}: {}", githubLogin, email);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to resolve Workspace email for seat {}: {}", githubLogin, e.getMessage());
+        // Priority 1: ALWAYS try to resolve corporate email from Google Workspace first
+        if (workspaceClient != null && githubLogin != null && !githubLogin.isBlank()) {
+            try {
+                Optional<String> workspaceEmail = workspaceClient.findEmailByGitName(githubLogin);
+                if (workspaceEmail.isPresent()) {
+                    email = workspaceEmail.get();
+                    log.debug("Workspace resolved email for seat {}: {}", githubLogin, email);
                 }
+            } catch (Exception e) {
+                log.warn("Failed to resolve Workspace email for seat {}: {}", githubLogin, e.getMessage());
+            }
+        }
+
+        // Priority 2: Only use seat email if it's @bemobi.com domain
+        if (email == null) {
+            String seatEmail = seat.email();
+            if (isBemobiEmail(seatEmail)) {
+                email = normalizeEmail(seatEmail);
+                log.debug("Using seat email (bemobi.com) for GitHub user {}: {}", githubLogin, email);
+            } else {
+                // Not a bemobi.com email - mark as unregistered
+                email = "[SEM-USR-GITHUB]";
+                log.debug("GitHub seat {} has non-bemobi email ({}), marking as unregistered",
+                    githubLogin, seatEmail);
             }
         }
 
         // Build raw metadata
         Map<String, Object> rawMetadata = new HashMap<>();
-        rawMetadata.put("gitHubLogin", seat.additionalMetrics().get("github_login"));
+        rawMetadata.put("gitHubLogin", githubLogin);
         rawMetadata.put("source", "seats_snapshot");
         rawMetadata.put("snapshot_date", date.toString());
         rawMetadata.putAll(seat.additionalMetrics());
 
         return new UnifiedUsageRecord(
-                email != null ? email : "[SEM-EMAIL]",
+                email,
                 ToolType.GITHUB_COPILOT,
                 date,
                 null, // No token data from seats
@@ -179,8 +195,10 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
      * <p>Note that GitHub Copilot does not expose token counts, so those fields are null.
      * The acceptance rate is calculated from lines of code metrics.</p>
      *
-     * <p>If Google Workspace integration is enabled, attempts to resolve the corporate email
-     * from the GitHub login. If not found, uses the GitHub public email or a placeholder.</p>
+     * <p><strong>Business Rule:</strong> All emails must be @bemobi.com domain.
+     * If Google Workspace integration is enabled, always attempts to resolve the corporate email
+     * from the GitHub login. If not found in Workspace, or if the GitHub public email is not
+     * @bemobi.com, the user is marked as unregistered with placeholder email.</p>
      *
      * @param metric the GitHub Copilot user metric
      * @param date the date for the metric
@@ -190,7 +208,7 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
         String githubLogin = metric.userName();
         String email = null;
 
-        // Priority 1: Try to resolve corporate email from Google Workspace
+        // Priority 1: ALWAYS try to resolve corporate email from Google Workspace first
         if (workspaceClient != null && githubLogin != null && !githubLogin.isBlank()) {
             try {
                 Optional<String> workspaceEmail = workspaceClient.findEmailByGitName(githubLogin);
@@ -203,9 +221,18 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
             }
         }
 
-        // Priority 2: Use GitHub public email if Workspace lookup failed
+        // Priority 2: Only use GitHub public email if it's @bemobi.com domain
         if (email == null) {
-            email = normalizeEmail(metric.userEmail());
+            String githubPublicEmail = metric.userEmail();
+            if (isBemobiEmail(githubPublicEmail)) {
+                email = normalizeEmail(githubPublicEmail);
+                log.debug("Using GitHub public email (bemobi.com) for user {}: {}", githubLogin, email);
+            } else {
+                // Not a bemobi.com email - mark as unregistered
+                email = "[SEM-USR-GITHUB]";
+                log.debug("GitHub user {} has non-bemobi email ({}), marking as unregistered",
+                    githubLogin, githubPublicEmail);
+            }
         }
 
         // Calculate acceptance rate: locAddedSum / locSuggestedToAddSum
@@ -247,6 +274,19 @@ public class GitHubCopilotUsageDataCollector implements UsageDataCollector {
             return "[SEM-USR-GITHUB]";
         }
         return email.toLowerCase().trim();
+    }
+
+    /**
+     * Checks if an email belongs to bemobi.com domain.
+     *
+     * @param email the email to check
+     * @return true if email ends with @bemobi.com, false otherwise
+     */
+    private boolean isBemobiEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        return email.toLowerCase().trim().endsWith("@bemobi.com");
     }
 
     /**
