@@ -2,20 +2,15 @@ package com.bemobi.aicontrol.integration.claude.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * DTO representing a single data point in Claude API usage report.
+ * DTO representing a time bucket in Claude API usage report (new format).
  *
- * <p>Represents token usage data for a specific timestamp and API key/workspace.</p>
+ * <p>Each bucket contains a time range and a list of usage results grouped by the specified dimensions.</p>
  */
 public record UsageDataPoint(
-        LocalDateTime timestamp,
-        @JsonProperty("workspace_id") String workspaceId,
-        @JsonProperty("api_key_id") String apiKeyId,
-        String model,
-        @JsonProperty("input_tokens") Long inputTokens,
-        @JsonProperty("output_tokens") Long outputTokens,
-        @JsonProperty("cache_creation_input_tokens") Long cacheCreationInputTokens,
-        @JsonProperty("cache_read_input_tokens") Long cacheReadInputTokens
+        @JsonProperty("starting_at") String startingAt,
+        @JsonProperty("ending_at") String endingAt,
+        List<UsageResult> results
 ) {}

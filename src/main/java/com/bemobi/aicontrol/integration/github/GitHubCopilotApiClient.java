@@ -97,8 +97,8 @@ public class GitHubCopilotApiClient implements ToolApiClient {
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
                 .bodyToMono(GitHubCopilotSeatsResponse.class)
                 .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
-                    .filter(throwable -> throwable instanceof WebClientResponseException &&
-                           ((WebClientResponseException) throwable).getStatusCode().is5xxServerError())
+                    .filter(throwable -> throwable instanceof WebClientResponseException
+                            && ((WebClientResponseException) throwable).getStatusCode().is5xxServerError())
                     .doBeforeRetry(signal ->
                         log.warn("Server error, retrying request. Attempt: {}", signal.totalRetries() + 1)))
                 .block(Duration.ofMillis(properties.getTimeout()));
@@ -268,7 +268,7 @@ public class GitHubCopilotApiClient implements ToolApiClient {
      * Fetches user metrics for a specific date from the GitHub Copilot Metrics API.
      *
      * <p>This method uses the new Metrics API endpoint:
-     * GET /orgs/{org}/copilot/metrics/reports/users-1-day?date=YYYY-MM-DD</p>
+     * GET /orgs/{org}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD</p>
      *
      * <p>The API returns a signed URL that must be accessed to download the actual
      * metrics data in NDJSON format (one JSON object per line, one per user).</p>
@@ -287,15 +287,15 @@ public class GitHubCopilotApiClient implements ToolApiClient {
             Map<String, Object> initialResponse = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                     .path("/orgs/{org}/copilot/metrics/reports/users-1-day")
-                    .queryParam("date", dateStr)
+                    .queryParam("day", dateStr)
                     .build(properties.getOrganization()))
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
                 .bodyToMono(Map.class)
                 .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
-                    .filter(throwable -> throwable instanceof WebClientResponseException &&
-                           ((WebClientResponseException) throwable).getStatusCode().is5xxServerError())
+                    .filter(throwable -> throwable instanceof WebClientResponseException
+                            && ((WebClientResponseException) throwable).getStatusCode().is5xxServerError())
                     .doBeforeRetry(signal ->
                         log.warn("Server error, retrying metrics request. Attempt: {}", signal.totalRetries() + 1)))
                 .block(Duration.ofMillis(properties.getTimeout()));

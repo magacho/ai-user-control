@@ -2,18 +2,15 @@ package com.bemobi.aicontrol.integration.claude.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * DTO representing a single data point in Claude API cost report.
+ * DTO representing a time bucket in Claude API cost report (new format).
  *
- * <p>Represents cost data for a specific timestamp and workspace.</p>
- * <p><b>Note:</b> Cost is in cents. Divide by 100 to get USD.</p>
+ * <p>Each bucket contains a time range and a list of cost results.</p>
  */
 public record CostDataPoint(
-        LocalDateTime timestamp,
-        @JsonProperty("workspace_id") String workspaceId,
-        Long cost,
-        @JsonProperty("cost_type") String costType,
-        String description
+        @JsonProperty("starting_at") String startingAt,
+        @JsonProperty("ending_at") String endingAt,
+        List<CostResult> results
 ) {}

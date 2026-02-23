@@ -22,7 +22,8 @@ import java.util.Map;
 public class UserUnificationService {
 
     private static final Logger log = LoggerFactory.getLogger(UserUnificationService.class);
-    private static final DateTimeFormatter CSV_DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    private static final DateTimeFormatter CSV_DATETIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     private static final String NO_GITHUB_USER_PREFIX = "[sem-usr-github]";
 
     /**

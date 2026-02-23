@@ -5,7 +5,14 @@ import com.bemobi.aicontrol.integration.common.UnifiedSpendingRecord;
 import com.bemobi.aicontrol.integration.common.UnifiedUsageRecord;
 import com.bemobi.aicontrol.integration.common.UsageDataCollector;
 import com.bemobi.aicontrol.integration.google.GoogleWorkspaceClient;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,11 +25,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -137,8 +151,8 @@ public class UnifiedSpendingService {
 
         ReportSummary summary = calculateSummary(allUsageRecords, allSpendingRecords);
 
-        String period = startDate.format(DateTimeFormatter.ISO_DATE) + " to " +
-                        endDate.format(DateTimeFormatter.ISO_DATE);
+        String period = startDate.format(DateTimeFormatter.ISO_DATE)
+                + " to " + endDate.format(DateTimeFormatter.ISO_DATE);
 
         log.info("Report generation completed. Usage records: {}, Spending records: {}, Total cost: ${}",
             allUsageRecords.size(), allSpendingRecords.size(), summary.totalCostUsd());
@@ -155,15 +169,22 @@ public class UnifiedSpendingService {
     /**
      * Exports the consolidated report to an XLSX file with 6 sheets.
      *
-     * <p>Sheets:
+     * <p><strong>Consolidated Sheets (aggregated by user):</strong></p>
      * <ol>
-     *   <li>Volumes de Uso - Consolidated usage by user and tool</li>
-     *   <li>GitHub Não Cadastrados - Unregistered GitHub users</li>
-     *   <li>Usuários Multi-Tool - Users with multiple tools</li>
-     *   <li>Claude - Dados Brutos - Raw Claude records for debugging</li>
-     *   <li>GitHub - Dados Brutos - Raw GitHub Copilot records for debugging</li>
-     *   <li>Cursor - Dados Brutos - Raw Cursor records for debugging</li>
+     *   <li><strong>Volumes de Uso</strong> - Aggregated usage by user and tool (period totals)</li>
+     *   <li><strong>GitHub Não Cadastrados</strong> - Unregistered GitHub users (no corporate email)</li>
+     *   <li><strong>Usuários Multi-Tool</strong> - Users with multiple tools (aggregated metrics)</li>
      * </ol>
+     *
+     * <p><strong>Raw Data Sheets (debugging - snapshots):</strong></p>
+     * <ol start="4">
+     *   <li><strong>Claude - Dados Brutos</strong> - Raw Claude records (all records from API)</li>
+     *   <li><strong>GitHub - Dados Brutos</strong> - Raw GitHub Copilot seats (snapshot)</li>
+     *   <li><strong>Cursor - Dados Brutos</strong> - Raw Cursor records (LAST DAY ONLY - snapshot)</li>
+     * </ol>
+     *
+     * <p><strong>Note:</strong> Cursor raw data shows only the last day to avoid showing 30 days × N users.
+     * The "Volumes de Uso" sheet already shows aggregated period data.</p>
      *
      * @param report ConsolidatedReport to export
      * @param outputPath Path where the XLSX file will be saved
@@ -186,24 +207,39 @@ public class UnifiedSpendingService {
             buildMultiToolUserRows(report.usageRecords(), report.spendingRecords());
 
         // Raw data sheets (for debugging)
+        // Claude: show all records (usually snapshot-based from API)
         List<UnifiedUsageRecord> claudeRawRecords = report.usageRecords().stream()
             .filter(r -> r.tool() == ToolType.CLAUDE)
             .toList();
 
+        // GitHub: show all records (usually snapshot-based from seats API)
         List<UnifiedUsageRecord> githubRawRecords = report.usageRecords().stream()
             .filter(r -> r.tool() == ToolType.GITHUB_COPILOT)
             .toList();
 
+        // Cursor: show ONLY last day (snapshot) to avoid 30 days × N users records
+        // The consolidated sheet already shows aggregated data for the period
+        LocalDate lastDate = report.usageRecords().stream()
+            .filter(r -> r.tool() == ToolType.CURSOR)
+            .map(UnifiedUsageRecord::date)
+            .max(LocalDate::compareTo)
+            .orElse(LocalDate.now());
+
         List<UnifiedUsageRecord> cursorRawRecords = report.usageRecords().stream()
             .filter(r -> r.tool() == ToolType.CURSOR)
+            .filter(r -> r.date().equals(lastDate))
             .toList();
+
+        log.debug("Cursor raw data filtered to last date: {} ({} records)",
+            lastDate, cursorRawRecords.size());
 
         writeXlsxFile(outputPath, usageRows, githubUnregisteredRows, multiToolRows,
             claudeRawRecords, githubRawRecords, cursorRawRecords);
 
-        log.info("XLSX export completed. File: {}, Usage rows: {}, Unregistered: {}, Multi-tool: {}, Raw: Claude={}, GitHub={}, Cursor={}",
-            outputPath, usageRows.size(), githubUnregisteredRows.size(), multiToolRows.size(),
-            claudeRawRecords.size(), githubRawRecords.size(), cursorRawRecords.size());
+        log.info("XLSX export completed. File: {}, Usage: {}, Unregistered: {}, Multi-tool: {},"
+                + " Raw: Claude={}, GitHub={}, Cursor={}",
+                outputPath, usageRows.size(), githubUnregisteredRows.size(), multiToolRows.size(),
+                claudeRawRecords.size(), githubRawRecords.size(), cursorRawRecords.size());
 
         return outputPath;
     }
@@ -536,7 +572,7 @@ public class UnifiedSpendingService {
             // Raw data sheets (for debugging)
             writeRawDataSheet(workbook, "Claude - Dados Brutos", claudeRawRecords);
             writeRawDataSheet(workbook, "GitHub - Dados Brutos", githubRawRecords);
-            writeRawDataSheet(workbook, "Cursor - Dados Brutos", cursorRawRecords);
+            writeRawDataSheet(workbook, "Cursor - Snapshot", cursorRawRecords);
 
             // Write to file
             try (FileOutputStream fileOut = new FileOutputStream(outputPath.toFile())) {

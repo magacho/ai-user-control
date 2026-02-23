@@ -1,6 +1,7 @@
 package com.bemobi.aicontrol.integration.claude;
 
 import com.bemobi.aicontrol.integration.ToolApiClient;
+import com.bemobi.aicontrol.integration.claude.dto.ClaudeCodeUsageReport;
 import com.bemobi.aicontrol.integration.claude.dto.ClaudeMember;
 import com.bemobi.aicontrol.integration.claude.dto.ClaudeMembersResponse;
 import com.bemobi.aicontrol.integration.claude.dto.CostReportResponse;
@@ -214,6 +215,51 @@ public class ClaudeApiClient implements ToolApiClient {
         } catch (WebClientException e) {
             log.error("Error fetching cost report from Claude: {}", e.getMessage(), e);
             throw new ApiClientException("Failed to fetch cost report from Claude", e);
+        }
+    }
+
+    /**
+     * Fetches Claude Code usage report from Claude Admin API.
+     * This endpoint provides per-user statistics with email addresses.
+     *
+     * @param startingAt starting date (YYYY-MM-DD format)
+     * @return Claude Code usage report with per-user data
+     * @throws ApiClientException if API call fails
+     */
+    public ClaudeCodeUsageReport fetchClaudeCodeUsageReport(LocalDate startingAt)
+            throws ApiClientException {
+        log.info("Fetching Claude Code usage report from Claude API: starting_at={}", startingAt);
+
+        try {
+            ClaudeCodeUsageReport response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/v1/organizations/usage_report/claude_code")
+                    .queryParam("starting_at", startingAt.toString())
+                    .queryParam("limit", 100)
+                    .build())
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
+                .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
+                .bodyToMono(ClaudeCodeUsageReport.class)
+                .retryWhen(Retry.backoff(properties.getRetryAttempts(), Duration.ofSeconds(1))
+                    .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
+                    .doBeforeRetry(signal ->
+                        log.warn("Rate limit hit, retrying request. Attempt: {}", signal.totalRetries() + 1)))
+                .block(Duration.ofMillis(properties.getTimeout()));
+
+            if (response == null) {
+                throw new ApiClientException("Empty response from Claude Code usage report API");
+            }
+
+            log.info("Successfully fetched Claude Code usage report with {} records, hasMore={}",
+                    response.data() != null ? response.data().size() : 0,
+                    response.hasMore());
+
+            return response;
+
+        } catch (WebClientException e) {
+            log.error("Error fetching Claude Code usage report: {}", e.getMessage(), e);
+            throw new ApiClientException("Failed to fetch Claude Code usage report", e);
         }
     }
 

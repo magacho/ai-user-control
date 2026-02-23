@@ -64,6 +64,9 @@ public class CursorApiClient implements ToolApiClient {
             .baseUrl(baseUrl)
             .defaultHeader("Authorization", authHeader)
             .defaultHeader("Content-Type", "application/json")
+            .codecs(configurer -> configurer
+                .defaultCodecs()
+                .maxInMemorySize(10 * 1024 * 1024)) // 10MB buffer for large responses
             .build();
     }
 
@@ -170,15 +173,27 @@ public class CursorApiClient implements ToolApiClient {
      *
      * <p>Retrieves spending information for all team members.</p>
      *
+     * <p>Note: API expects POST with date range in body.</p>
+     *
+     * @param startDate start date (inclusive)
+     * @param endDate end date (inclusive)
      * @return spending data response containing per-user spending information
      * @throws ApiClientException if the API request fails
      */
-    public SpendingDataResponse fetchSpendingData() throws ApiClientException {
-        log.info("Fetching spending data from Cursor Admin API");
+    public SpendingDataResponse fetchSpendingData(
+            java.time.LocalDate startDate, java.time.LocalDate endDate) throws ApiClientException {
+        log.info("Fetching spending data from Cursor Admin API: {} to {}", startDate, endDate);
+
+        // Cursor API uses date strings in ISO format (YYYY-MM-DD)
+        Map<String, String> requestBody = Map.of(
+            "startDate", startDate.toString(),
+            "endDate", endDate.toString()
+        );
 
         try {
-            SpendingDataResponse response = webClient.get()
+            SpendingDataResponse response = webClient.post()
                 .uri("/teams/spending-data")
+                .bodyValue(requestBody)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)
@@ -209,15 +224,27 @@ public class CursorApiClient implements ToolApiClient {
      * <p>Retrieves daily usage metrics for all team members, including token usage,
      * lines added/deleted, acceptance rates, and model usage statistics.</p>
      *
+     * <p>Note: API expects POST with date range in body.</p>
+     *
+     * @param startDate start date (inclusive)
+     * @param endDate end date (inclusive)
      * @return daily usage response containing per-user daily metrics
      * @throws ApiClientException if the API request fails
      */
-    public DailyUsageResponse fetchDailyUsage() throws ApiClientException {
-        log.info("Fetching daily usage data from Cursor Admin API");
+    public DailyUsageResponse fetchDailyUsage(
+            java.time.LocalDate startDate, java.time.LocalDate endDate) throws ApiClientException {
+        log.info("Fetching daily usage data from Cursor Admin API: {} to {}", startDate, endDate);
+
+        // Cursor API uses date strings in ISO format (YYYY-MM-DD)
+        Map<String, String> requestBody = Map.of(
+            "startDate", startDate.toString(),
+            "endDate", endDate.toString()
+        );
 
         try {
-            DailyUsageResponse response = webClient.get()
+            DailyUsageResponse response = webClient.post()
                 .uri("/teams/daily-usage-data")
+                .bodyValue(requestBody)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxError)
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxError)

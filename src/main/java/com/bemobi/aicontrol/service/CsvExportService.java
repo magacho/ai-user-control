@@ -29,8 +29,10 @@ import java.util.Map;
 public class CsvExportService {
 
     private static final Logger log = LoggerFactory.getLogger(CsvExportService.class);
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
-    private static final DateTimeFormatter CSV_DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final DateTimeFormatter CSV_DATETIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     private static final String[] CSV_HEADERS = {
             "tool", "email", "name", "status", "last_activity_at", "collected_at", "email_type"

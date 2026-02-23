@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +47,9 @@ public class CursorUsageDataCollector implements UsageDataCollector {
             throws ApiClientException {
         log.info("Collecting usage data from Cursor for period {} to {}", startDate, endDate);
 
-        DailyUsageResponse response = cursorApiClient.fetchDailyUsage();
+        DailyUsageResponse response = cursorApiClient.fetchDailyUsage(startDate, endDate);
 
         List<UnifiedUsageRecord> records = response.data().stream()
-            .filter(record -> isWithinDateRange(record.date(), startDate, endDate))
             .map(this::convertToUnifiedUsageRecord)
             .collect(Collectors.toList());
 
@@ -65,7 +63,7 @@ public class CursorUsageDataCollector implements UsageDataCollector {
             throws ApiClientException {
         log.info("Collecting spending data from Cursor for period {} to {}", startDate, endDate);
 
-        SpendingDataResponse response = cursorApiClient.fetchSpendingData();
+        SpendingDataResponse response = cursorApiClient.fetchSpendingData(startDate, endDate);
 
         // Cursor spending data doesn't have date granularity, so we use the period as string
         String period = startDate.equals(endDate)
@@ -112,9 +110,8 @@ public class CursorUsageDataCollector implements UsageDataCollector {
         Integer linesSuggested = calculateLinesSuggested(record);
         Integer linesAccepted = record.linesAdded();
 
-        LocalDate date = record.date() != null
-            ? LocalDate.parse(record.date(), DATE_FORMATTER)
-            : null;
+        // Parse date - Cursor API returns epoch milliseconds as string
+        LocalDate date = parseDate(record.date());
 
         return new UnifiedUsageRecord(
             record.email() != null ? record.email().toLowerCase() : null,
@@ -216,19 +213,30 @@ public class CursorUsageDataCollector implements UsageDataCollector {
     }
 
     /**
-     * Verifica se uma data está dentro do intervalo especificado.
+     * Parse date from Cursor API.
+     *
+     * <p>Cursor API returns dates as epoch milliseconds in string format (e.g., "1768348800000").
+     * This method converts it to LocalDate.</p>
      */
-    private boolean isWithinDateRange(String dateStr, LocalDate startDate, LocalDate endDate) {
-        if (dateStr == null) {
-            return false;
+    private LocalDate parseDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) {
+            return null;
         }
 
         try {
-            LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
-            return !date.isBefore(startDate) && !date.isAfter(endDate);
-        } catch (Exception e) {
-            log.warn("Failed to parse date: {}", dateStr, e);
-            return false;
+            // Try parsing as epoch milliseconds first (Cursor API format)
+            long epochMillis = Long.parseLong(dateStr);
+            return java.time.Instant.ofEpochMilli(epochMillis)
+                .atZone(java.time.ZoneOffset.UTC)
+                .toLocalDate();
+        } catch (NumberFormatException e1) {
+            // Fallback: try parsing as ISO date string
+            try {
+                return LocalDate.parse(dateStr, DATE_FORMATTER);
+            } catch (Exception e2) {
+                log.warn("Failed to parse date '{}': {}", dateStr, e2.getMessage());
+                return null;
+            }
         }
     }
 

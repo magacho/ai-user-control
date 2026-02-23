@@ -103,7 +103,8 @@ public class GoogleWorkspaceClient {
         GoogleCredentials credentials = loadCredentials(props.getCredentials());
 
         if (!(credentials instanceof ServiceAccountCredentials serviceCredentials)) {
-            throw new IOException("Expected ServiceAccountCredentials but got: " + credentials.getClass().getSimpleName()
+            throw new IOException("Expected ServiceAccountCredentials but got: "
+                    + credentials.getClass().getSimpleName()
                     + ". Ensure the credentials file is for a service account.");
         }
 

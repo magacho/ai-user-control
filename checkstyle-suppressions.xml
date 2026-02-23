@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<!--
+    Suppressions for one-off diagnostic and utility scripts
+    that live in the root package and are not production code.
+-->
+<suppressions>
+    <!-- Diagnostic and investigation utilities (root package) -->
+    <suppress files="DiagnoseGitNameMatching\.java" checks=".*"/>
+    <suppress files="DiagnoseGoogleAuth\.java" checks=".*"/>
+    <suppress files="DiagnoseGoogleWorkspace\.java" checks=".*"/>
+    <suppress files="InspectUserCustomFields\.java" checks=".*"/>
+    <suppress files="ListAnyUserWithCustomFields\.java" checks=".*"/>
+    <suppress files="ListGoogleWorkspaceSchemas\.java" checks=".*"/>
+    <suppress files="ShowUserFullJson\.java" checks=".*"/>
+    <suppress files="TestDifferentQueryFormats\.java" checks=".*"/>
+    <suppress files="TestGitHubFetch\.java" checks=".*"/>
+    <suppress files="TestGitHubSchema\.java" checks=".*"/>
+    <suppress files="TestGoogleWorkspace\.java" checks=".*"/>
+</suppressions>

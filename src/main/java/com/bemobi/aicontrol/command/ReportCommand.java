@@ -60,14 +60,14 @@ public class ReportCommand implements CommandLineRunner {
 
         System.out.println("\n✅ Relatório gerado com sucesso!");
         System.out.println("📄 Arquivo: " + xlsxFile.toAbsolutePath());
-        System.out.println("\n📊 Abas consolidadas:");
-        System.out.println("  - Aba 1: Volumes de Uso (agregado por usuário)");
+        System.out.println("\n📊 Abas consolidadas (agregado do período):");
+        System.out.println("  - Aba 1: Volumes de Uso");
         System.out.println("  - Aba 2: GitHub Não Cadastrados");
         System.out.println("  - Aba 3: Usuários Multi-Tool");
-        System.out.println("\n🔍 Abas de debug (dados brutos):");
+        System.out.println("\n🔍 Abas de debug (snapshots):");
         System.out.println("  - Aba 4: Claude - Dados Brutos");
-        System.out.println("  - Aba 5: GitHub - Dados Brutos");
-        System.out.println("  - Aba 6: Cursor - Dados Brutos");
+        System.out.println("  - Aba 5: GitHub - Dados Brutos (seats)");
+        System.out.println("  - Aba 6: Cursor - Snapshot (último dia)");
         System.out.println();
     }
 }
